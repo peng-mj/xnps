@@ -1,21 +1,21 @@
 # NPS
 
-[更新说明](https://github.com/ehang-io/nps/blob/master/README.md)|[使用文档](https://github.com/ehang-io/nps/blob/master/README_zh.md)
+[更新说明](https://github.com/peng-mj/xnps/blob/master/README.md)|[使用文档](https://github.com/peng-mj/xnps/blob/master/README_zh.md)
 
 # 说明
-由于nps已经有一年多的时间没有更新了，存留了不少bug和未完善的功能。
+  由于nps上次更新于2021年10月，到目前留存了不少的bug以及未完善的功能。
 
-此版本基于 nps 0.26.10的基础上二次开发而来,核心功能基于此版本。
+  此版本基于 nps 0.26.10的基础上二次开发而来,核心功能基于此版本。
 
- **TODO**:此版本只保留最基础的tcp/udp/http穿透功能 
+  **TODO**:此版本只保留最基础的tcp/udp/http穿透功能 
 
- **TODO**:新增黑名单功能，具备地区黑名单，及黑名单列表，白名单等功能。 
+  **TODO**:新增黑名单功能，具备地区黑名单，及黑名单列表，白名单等功能。 
 
- **TODO**:此外此版本将原本的json数据库，修改为sqlite数据库（仅服务端），服务端只保留amd64/x86架构的linux和windows，去掉其他编译版本 
+  **TODO**:此外此版本将原本的json数据库，修改为sqlite数据库（仅服务端），服务端只保留amd64/x86架构的linux和windows，去掉其他编译版本 
 
- **TODO**:增加客户端监控功能，监控客户端cpu、内存、客户端时间等必要监控功能，便于运维 
+  **TODO**:增加客户端监控功能，监控客户端cpu、内存、客户端时间等必要监控功能，便于运维 
 
- **TODO**:web重构，将使用React重构
+  **TODO**:web重构，将使用React重构
 
 ### NOTICE:本项目正在开发，暂时请勿使用2023-09-05
 
@@ -78,7 +78,7 @@
 ***BUG***：在TCP协议下，流量统计有问题，只有当连接断开时才会统计流量。例如，限制客户端流量20m,当传输100m的文件时，也能传输成功。  
 ***修复***：TCP协议下实时统计流量，能够精准的限制住流量（上下行对等）  
 ***优化***：删除TCP隧道时，客户端已用流量不再清空
-![image](image/new/tcp_limit.png)
+
 
 
 - 2022-09-14:  
