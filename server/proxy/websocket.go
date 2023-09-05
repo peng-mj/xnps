@@ -2,10 +2,6 @@ package proxy
 
 import (
 	"context"
-	"ehang.io/nps/lib/common"
-	"ehang.io/nps/lib/conn"
-	"ehang.io/nps/lib/file"
-	"ehang.io/nps/lib/goroutine"
 	"errors"
 	"github.com/astaxie/beego/logs"
 	"io"
@@ -15,6 +11,10 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"xnps/lib/common"
+	"xnps/lib/conn"
+	"xnps/lib/file"
+	"xnps/lib/goroutine"
 )
 
 type HTTPError struct {

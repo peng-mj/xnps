@@ -3,13 +3,6 @@ package proxy
 import (
 	"bufio"
 	"crypto/tls"
-	"ehang.io/nps/bridge"
-	"ehang.io/nps/lib/cache"
-	"ehang.io/nps/lib/common"
-	"ehang.io/nps/lib/conn"
-	"ehang.io/nps/lib/file"
-	"ehang.io/nps/lib/goroutine"
-	"ehang.io/nps/server/connection"
 	"github.com/astaxie/beego/logs"
 	"io"
 	"net"
@@ -19,6 +12,13 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"xnps/bridge"
+	"xnps/lib/cache"
+	"xnps/lib/common"
+	"xnps/lib/conn"
+	"xnps/lib/file"
+	"xnps/lib/goroutine"
+	"xnps/server/connection"
 )
 
 type httpServer struct {

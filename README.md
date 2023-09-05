@@ -23,8 +23,12 @@
 
 ## 更新日志
 
+
+
 - 2023-09-05    
   fork from yisier/nps and rename to xnps
+
+  去除sdk，修改编译脚本，服务端只保留amd64/x86架构的linux和windows，去除docker编译脚本，去除Android编译脚本
 
 
 - 2023-02-24  v0.26.15  

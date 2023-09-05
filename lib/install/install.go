@@ -1,7 +1,6 @@
 package install
 
 import (
-	"ehang.io/nps/lib/common"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,6 +13,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"xnps/lib/common"
 )
 
 // Keep it in sync with the template from service_sysv_linux.go file
@@ -152,7 +152,7 @@ type release struct {
 	TagName string `json:"tag_name"`
 }
 
-//TODO:去掉更新，或者更改地址，防止后门
+// TODO:去掉更新，或者更改地址，防止后门
 func downloadLatest(bin string) string {
 	// get version
 

@@ -1,7 +1,6 @@
 package bridge
 
 import (
-	"ehang.io/nps/lib/nps_mux"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -11,16 +10,17 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"xnps/lib/nps_mux"
 
-	"ehang.io/nps/lib/common"
-	"ehang.io/nps/lib/conn"
-	"ehang.io/nps/lib/crypt"
-	"ehang.io/nps/lib/file"
-	"ehang.io/nps/lib/version"
-	"ehang.io/nps/server/connection"
-	"ehang.io/nps/server/tool"
 	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/logs"
+	"xnps/lib/common"
+	"xnps/lib/conn"
+	"xnps/lib/crypt"
+	"xnps/lib/file"
+	"xnps/lib/version"
+	"xnps/server/connection"
+	"xnps/server/tool"
 )
 
 type Client struct {

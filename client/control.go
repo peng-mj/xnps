@@ -18,14 +18,14 @@ import (
 	"strings"
 	"time"
 
-	"ehang.io/nps/lib/common"
-	"ehang.io/nps/lib/config"
-	"ehang.io/nps/lib/conn"
-	"ehang.io/nps/lib/crypt"
-	"ehang.io/nps/lib/version"
 	"github.com/astaxie/beego/logs"
 	"github.com/xtaci/kcp-go"
 	"golang.org/x/net/proxy"
+	"xnps/lib/common"
+	"xnps/lib/config"
+	"xnps/lib/conn"
+	"xnps/lib/crypt"
+	"xnps/lib/version"
 )
 
 func GetTaskStatus(path string) {

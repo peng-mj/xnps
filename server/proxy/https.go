@@ -7,14 +7,14 @@ import (
 	"path/filepath"
 	"sync"
 
-	"ehang.io/nps/lib/cache"
-	"ehang.io/nps/lib/common"
-	"ehang.io/nps/lib/conn"
-	"ehang.io/nps/lib/crypt"
-	"ehang.io/nps/lib/file"
 	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/logs"
 	"github.com/pkg/errors"
+	"xnps/lib/cache"
+	"xnps/lib/common"
+	"xnps/lib/conn"
+	"xnps/lib/crypt"
+	"xnps/lib/file"
 )
 
 type HttpsServer struct {
@@ -33,7 +33,7 @@ func NewHttpsServer(l net.Listener, bridge NetBridge, useCache bool, cacheLen in
 	return https
 }
 
-//start https server
+// start https server
 func (https *HttpsServer) Start() error {
 	var err error
 	if https.errorContent, err = common.ReadAllFromFile(filepath.Join(common.GetRunPath(), "web", "static", "page", "error.html")); err != nil {
@@ -104,7 +104,7 @@ func (https *HttpsServer) NewHttps(l net.Listener, certFile string, keyFile stri
 	}()
 }
 
-//handle the https which is just proxy to other client
+// handle the https which is just proxy to other client
 func (https *HttpsServer) handleHttps(c net.Conn) {
 	hostName, rb := GetServerNameFromClientHello(c)
 	var targetAddr string

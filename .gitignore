@@ -1,5 +1,7 @@
 .idea
-nps*
-npc*
+./nps*
+./npc*
 bin
-npc_vkey.txt
+*.exe
+*.txt
+
