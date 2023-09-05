@@ -12,9 +12,9 @@ import (
 )
 
 type Flow struct {
-	ExportFlow int64
-	InletFlow  int64
-	FlowLimit  int64
+	ExportFlow int64 //出口流浪
+	InletFlow  int64 //入口流量
+	FlowLimit  int64 //流量限制
 	sync.RWMutex
 }
 
@@ -26,26 +26,12 @@ func (s *Flow) Add(in, out int64) {
 }
 
 type Config struct {
-	U        string
-	P        string
+	U        string //web的用户名
+	P        string //web的密码
 	Compress bool
 	Crypt    bool
 }
-type AreaHistory struct {
-	ID          int64   `gorm:"column:id;type:int;auto_increment;not null;primaryKey;autoIncrement:true" json:"id"`
-	UpdateTime  int64   `gorm:"column:update_time;type:bigint(20);not null" json:"update_time"`
-	RoastInfoID int64   `gorm:"column:roast_info_id;type:bigint(11);not null" json:"roast_info_id"`
-	St1         float64 `gorm:"column:st1;type:double;not null" json:"st1"`
-	St2         float64 `gorm:"column:st2;type:double;not null" json:"st2"`
-	St3         float64 `gorm:"column:st3;type:double;not null" json:"st3"`
-	St4         float64 `gorm:"column:st4;type:double;not null" json:"st4"`
-	St5         float64 `gorm:"column:st5;type:double;not null" json:"st5"`
-	St6         float64 `gorm:"column:st6;type:double;not null" json:"st6"`
-	St7         float64 `gorm:"column:st7;type:double;not null" json:"st7"`
-	St8         float64 `gorm:"column:st8;type:double;not null" json:"st8"`
-	St9         float64 `gorm:"column:st9;type:double;not null" json:"st9"`
-	St10        float64 `gorm:"column:st10;type:double;not null" json:"st10"`
-}
+
 type Client2 struct {
 	Id              int64    `gorm:"column:id;type:int;auto_increment;not null;primaryKey;" json:"Id"`
 	VerifyKey       string   `gorm:"column:verify_key;type:text;not null" json:"VerifyKey"`

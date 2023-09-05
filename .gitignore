@@ -2,6 +2,7 @@
 ./nps*
 ./npc*
 bin
+TEMP
 *.exe
 *.txt
 

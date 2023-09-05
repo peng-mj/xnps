@@ -197,14 +197,14 @@ func (s *Conn) GetHealthInfo() (info string, status bool, err error) {
 	return "", false, errors.New("receive health info error")
 }
 
-// get task info
-func (s *Conn) GetHostInfo() (h *file.Host, err error) {
-	err = s.getInfo(&h)
-	h.Id = int(file.GetDb().JsonDb.GetHostId())
-	h.Flow = new(file.Flow)
-	h.NoStore = true
-	return
-}
+//// get task info
+//func (s *Conn) GetHostInfo() (h *file.Host, err error) {
+//	err = s.getInfo(&h)
+//	h.Id = int(file.GetDb().JsonDb.GetHostId())
+//	h.Flow = new(file.Flow)
+//	h.NoStore = true
+//	return
+//}
 
 // get task info
 func (s *Conn) GetConfigInfo() (c *file.Client, err error) {

@@ -112,18 +112,18 @@ func (s *Client) GetTunnelNum() (num int) {
 	return
 }
 
-func (s *Client) HasHost(h *Host) bool {
-	var has bool
-	GetDb().JsonDb.Hosts.Range(func(key, value interface{}) bool {
-		v := value.(*Host)
-		if v.Client.Id == s.Id && v.Host == h.Host && h.Location == v.Location {
-			has = true
-			return false
-		}
-		return true
-	})
-	return has
-}
+//func (s *Client) HasHost(h *Host) bool {
+//	var has bool
+//	GetDb().JsonDb.Hosts.Range(func(key, value interface{}) bool {
+//		v := value.(*Host)
+//		if v.Client.Id == s.Id && v.Host == h.Host && h.Location == v.Location {
+//			has = true
+//			return false
+//		}
+//		return true
+//	})
+//	return has
+//}
 
 type Tunnel struct {
 	Id           int
@@ -161,24 +161,24 @@ type Health struct {
 	sync.RWMutex
 }
 
-type Host struct {
-	Id           int
-	Host         string //host
-	HeaderChange string //header change
-	HostChange   string //host change
-	Location     string //url router
-	Remark       string //remark
-	Scheme       string //http https all
-	CertFilePath string
-	KeyFilePath  string
-	NoStore      bool
-	IsClose      bool
-	Flow         *Flow
-	Client       *Client
-	Target       *Target //目标
-	Health       `json:"-"`
-	sync.RWMutex
-}
+//type Host struct {
+//	Id           int
+//	Host         string //host
+//	HeaderChange string //header change
+//	HostChange   string //host change
+//	Location     string //url router
+//	Remark       string //remark
+//	Scheme       string //http https all
+//	CertFilePath string
+//	KeyFilePath  string
+//	NoStore      bool
+//	IsClose      bool
+//	Flow         *Flow
+//	Client       *Client
+//	Target       *Target //目标
+//	Health       `json:"-"`
+//	sync.RWMutex
+//}
 
 type Target struct {
 	nowIndex   int

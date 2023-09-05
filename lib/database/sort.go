@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"sort"
 	"sync"
+	"xnps/lib/database/models"
 )
 
 // A data structure to hold a key/value pair.
@@ -11,7 +12,7 @@ type Pair struct {
 	key        string //sort key
 	cId        int
 	order      string
-	clientFlow *Flow
+	clientFlow *models.Flow
 }
 
 // A slice of Pairs that implements sort.Interface to sort by Value.
@@ -30,7 +31,7 @@ func (p PairList) Less(i, j int) bool {
 func sortClientByKey(m sync.Map, sortKey, order string) (res []int) {
 	p := make(PairList, 0)
 	m.Range(func(key, value interface{}) bool {
-		p = append(p, &Pair{sortKey, value.(*Client).Id, order, value.(*Client).Flow})
+		p = append(p, &Pair{sortKey, value.(*models.Client).Id, order, value.(*models.Client).Flow})
 		return true
 	})
 	sort.Sort(p)

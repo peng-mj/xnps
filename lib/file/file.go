@@ -74,22 +74,22 @@ func (s *JsonDb) LoadClientFromJsonFile() {
 	})
 }
 
-func (s *JsonDb) LoadHostFromJsonFile() {
-	loadSyncMapFromFile(s.HostFilePath, func(v string) {
-		var err error
-		post := new(Host)
-		if json.Unmarshal([]byte(v), &post) != nil {
-			return
-		}
-		if post.Client, err = s.GetClient(post.Client.Id); err != nil {
-			return
-		}
-		s.Hosts.Store(post.Id, post)
-		if post.Id > int(s.HostIncreaseId) {
-			s.HostIncreaseId = int32(post.Id)
-		}
-	})
-}
+//func (s *JsonDb) LoadHostFromJsonFile() {
+//	loadSyncMapFromFile(s.HostFilePath, func(v string) {
+//		var err error
+//		post := new(Host)
+//		if json.Unmarshal([]byte(v), &post) != nil {
+//			return
+//		}
+//		if post.Client, err = s.GetClient(post.Client.Id); err != nil {
+//			return
+//		}
+//		s.Hosts.Store(post.Id, post)
+//		if post.Id > int(s.HostIncreaseId) {
+//			s.HostIncreaseId = int32(post.Id)
+//		}
+//	})
+//}
 
 func (s *JsonDb) GetClient(id int) (c *Client, err error) {
 	if v, ok := s.Clients.Load(id); ok {
@@ -162,12 +162,12 @@ func storeSyncMapToFile(m sync.Map, filePath string) {
 				return true
 			}
 			b, err = json.Marshal(obj)
-		case *Host:
-			obj := value.(*Host)
-			if obj.NoStore {
-				return true
-			}
-			b, err = json.Marshal(obj)
+		//case *Host:
+		//	obj := value.(*Host)
+		//	if obj.NoStore {
+		//		return true
+		//	}
+		//	b, err = json.Marshal(obj)
 		case *Client:
 			obj := value.(*Client)
 			if obj.NoStore {

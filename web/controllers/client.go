@@ -191,7 +191,7 @@ func (s *ClientController) Del() {
 	if err := file.GetDb().DelClient(id); err != nil {
 		s.AjaxErr("delete error")
 	}
-	server.DelTunnelAndHostByClientId(id, false)
+	//server.DelTunnelAndHostByClientId(id, false)
 	server.DelClientConnect(id)
 	s.AjaxOk("delete success")
 }

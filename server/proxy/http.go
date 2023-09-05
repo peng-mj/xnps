@@ -10,14 +10,12 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"sync"
 	"xnps/bridge"
 	"xnps/lib/cache"
 	"xnps/lib/common"
 	"xnps/lib/conn"
 	"xnps/lib/file"
-	"xnps/lib/goroutine"
 	"xnps/server/connection"
 )
 
@@ -103,8 +101,8 @@ func (s *httpServer) Close() error {
 func (s *httpServer) handleTunneling(w http.ResponseWriter, r *http.Request) {
 
 	if r.Header.Get("Upgrade") != "" {
-		rProxy := NewHttpReverseProxy(s)
-		rProxy.ServeHTTP(w, r)
+		//rProxy := NewHttpReverseProxy(s)
+		//rProxy.ServeHTTP(w, r)
 	} else {
 		hijacker, ok := w.(http.Hijacker)
 		if !ok {
@@ -116,23 +114,23 @@ func (s *httpServer) handleTunneling(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusServiceUnavailable)
 		}
 
-		s.handleHttp(conn.NewConn(c), r)
+		s.handleHttpHost(conn.NewConn(c), r)
 	}
 
 }
 
-func (s *httpServer) handleHttp(c *conn.Conn, r *http.Request) {
+func (s *httpServer) handleHttpHost(c *conn.Conn, r *http.Request) {
 	var (
-		host       *file.Host
-		target     net.Conn
-		err        error
+		//host       *file.Host
+		//target     net.Conn
+		//err        error
 		connClient io.ReadWriteCloser
-		scheme     = r.URL.Scheme
-		lk         *conn.Link
-		targetAddr string
-		lenConn    *conn.LenConn
-		isReset    bool
-		wg         sync.WaitGroup
+		//scheme     = r.URL.Scheme
+		//lk         *conn.Link
+		//targetAddr string
+		//lenConn    *conn.LenConn
+		isReset bool
+		wg      sync.WaitGroup
 	)
 	defer func() {
 		if connClient != nil {
@@ -142,42 +140,42 @@ func (s *httpServer) handleHttp(c *conn.Conn, r *http.Request) {
 		}
 		c.Close()
 	}()
-reset:
-	if isReset {
-		host.Client.AddConn()
-	}
-	if host, err = file.GetDb().GetInfoByHost(r.Host, r); err != nil {
-		logs.Notice("the url %s %s %s can't be parsed!", r.URL.Scheme, r.Host, r.RequestURI)
-		return
-	}
-	if err := s.CheckFlowAndConnNum(host.Client); err != nil {
-		logs.Warn("client id %d, host id %d, error %s, when https connection", host.Client.Id, host.Id, err.Error())
-		return
-	}
-	if !isReset {
-		defer host.Client.AddConn()
-	}
-	if err = s.auth(r, c, host.Client.Cnf.U, host.Client.Cnf.P); err != nil {
-		logs.Warn("auth error", err, r.RemoteAddr)
-		return
-	}
-	if targetAddr, err = host.Target.GetRandomTarget(); err != nil {
-		logs.Warn(err.Error())
-		return
-	}
+	//reset:
+	//if isReset {
+	//	host.Client.AddConn()
+	//}
+	//if host, err = file.GetDb().GetInfoByHost(r.Host, r); err != nil {
+	//	logs.Notice("the url %s %s %s can't be parsed!", r.URL.Scheme, r.Host, r.RequestURI)
+	//	return
+	//}
+	//if err := s.CheckFlowAndConnNum(host.Client); err != nil {
+	//	logs.Warn("client id %d, host id %d, error %s, when https connection", host.Client.Id, host.Id, err.Error())
+	//	return
+	//}
+	//if !isReset {
+	//	defer host.Client.AddConn()
+	//}
+	//if err = s.auth(r, c, host.Client.Cnf.U, host.Client.Cnf.P); err != nil {
+	//	logs.Warn("auth error", err, r.RemoteAddr)
+	//	return
+	//}
+	//if targetAddr, err = host.Target.GetRandomTarget(); err != nil {
+	//	logs.Warn(err.Error())
+	//	return
+	//}
 
 	// 判断访问地址是否在黑名单内
-	if common.IsBlackIp(c.RemoteAddr().String(), host.Client.VerifyKey, host.Client.BlackIpList) {
-		c.Close()
-		return
-	}
-
-	lk = conn.NewLink("http", targetAddr, host.Client.Cnf.Crypt, host.Client.Cnf.Compress, r.RemoteAddr, host.Target.LocalProxy)
-	if target, err = s.bridge.SendLinkInfo(host.Client.Id, lk, nil); err != nil {
-		logs.Notice("connect to target %s error %s", lk.Host, err)
-		return
-	}
-	connClient = conn.GetConn(target, lk.Crypt, lk.Compress, host.Client.Rate, true)
+	//if common.IsBlackIp(c.RemoteAddr().String(), host.Client.VerifyKey, host.Client.BlackIpList) {
+	//	c.Close()
+	//	return
+	//}
+	//
+	//lk = conn.NewLink("http", targetAddr, host.Client.Cnf.Crypt, host.Client.Cnf.Compress, r.RemoteAddr, host.Target.LocalProxy)
+	//if target, err = s.bridge.SendLinkInfo(host.Client.Id, lk, nil); err != nil {
+	//	logs.Notice("connect to target %s error %s", lk.Host, err)
+	//	return
+	//}
+	//connClient = conn.GetConn(target, lk.Crypt, lk.Compress, host.Client.Rate, true)
 
 	//read from inc-client
 	go func() {
@@ -191,10 +189,10 @@ reset:
 			}
 		}()
 
-		err1 := goroutine.CopyBuffer(c, connClient, host.Client.Flow, nil, "")
-		if err1 != nil {
-			return
-		}
+		//err1 := goroutine.CopyBuffer(c, connClient, host.Client.Flow, nil, "")
+		//if err1 != nil {
+		//	return
+		//}
 
 		resp, err := http.ReadResponse(bufio.NewReader(connClient), r)
 		if err != nil || resp == nil || r == nil {
@@ -211,56 +209,56 @@ reset:
 		}
 	}()
 
-	for {
-		//if the cache start and the request is in the cache list, return the cache
-		if s.useCache {
-			if v, ok := s.cache.Get(filepath.Join(host.Host, r.URL.Path)); ok {
-				n, err := c.Write(v.([]byte))
-				if err != nil {
-					break
-				}
-				logs.Trace("%s request, method %s, host %s, url %s, remote address %s, return cache", r.URL.Scheme, r.Method, r.Host, r.URL.Path, c.RemoteAddr().String())
-				host.Client.Flow.Add(int64(n), int64(n))
-				//if return cache and does not create a new conn with client and Connection is not set or close, close the connection.
-				if strings.ToLower(r.Header.Get("Connection")) == "close" || strings.ToLower(r.Header.Get("Connection")) == "" {
-					break
-				}
-				goto readReq
-			}
-		}
+	//for {
+	//	//if the cache start and the request is in the cache list, return the cache
+	//	if s.useCache {
+	//		if v, ok := s.cache.Get(filepath.Join(host.Host, r.URL.Path)); ok {
+	//			n, err := c.Write(v.([]byte))
+	//			if err != nil {
+	//				break
+	//			}
+	//			logs.Trace("%s request, method %s, host %s, url %s, remote address %s, return cache", r.URL.Scheme, r.Method, r.Host, r.URL.Path, c.RemoteAddr().String())
+	//			host.Client.Flow.Add(int64(n), int64(n))
+	//			//if return cache and does not create a new conn with client and Connection is not set or close, close the connection.
+	//			if strings.ToLower(r.Header.Get("Connection")) == "close" || strings.ToLower(r.Header.Get("Connection")) == "" {
+	//				break
+	//			}
+	//			goto readReq
+	//		}
+	//	}
 
-		//change the host and header and set proxy setting
-		common.ChangeHostAndHeader(r, host.HostChange, host.HeaderChange, c.Conn.RemoteAddr().String(), s.addOrigin)
-		logs.Info("%s request, method %s, host %s, url %s, remote address %s, target %s", r.URL.Scheme, r.Method, r.Host, r.URL.Path, c.RemoteAddr().String(), lk.Host)
-		//write
-		lenConn = conn.NewLenConn(connClient)
-		//lenConn = conn.LenConn
-		if err := r.Write(lenConn); err != nil {
-			logs.Error(err)
-			break
-		}
-		host.Client.Flow.Add(int64(lenConn.Len), int64(lenConn.Len))
+	////change the host and header and set proxy setting
+	//common.ChangeHostAndHeader(r, host.HostChange, host.HeaderChange, c.Conn.RemoteAddr().String(), s.addOrigin)
+	//logs.Info("%s request, method %s, host %s, url %s, remote address %s, target %s", r.URL.Scheme, r.Method, r.Host, r.URL.Path, c.RemoteAddr().String(), lk.Host)
+	////write
+	//lenConn = conn.NewLenConn(connClient)
+	////lenConn = conn.LenConn
+	//if err := r.Write(lenConn); err != nil {
+	//	logs.Error(err)
+	//	break
+	//}
+	//host.Client.Flow.Add(int64(lenConn.Len), int64(lenConn.Len))
 
-	readReq:
-		//read req from connection
-		r, err = http.ReadRequest(bufio.NewReader(c))
-		if err != nil {
-			//break
-			return
-		}
-		r.URL.Scheme = scheme
-		//What happened ，Why one character less???
-		r.Method = resetReqMethod(r.Method)
-		if hostTmp, err := file.GetDb().GetInfoByHost(r.Host, r); err != nil {
-			logs.Notice("the url %s %s %s can't be parsed!", r.URL.Scheme, r.Host, r.RequestURI)
-			break
-		} else if host != hostTmp {
-			host = hostTmp
-			isReset = true
-			connClient.Close()
-			goto reset
-		}
-	}
+	//readReq:
+	//	//read req from connection
+	//	r, err = http.ReadRequest(bufio.NewReader(c))
+	//	if err != nil {
+	//		//break
+	//		return
+	//	}
+	//	r.URL.Scheme = scheme
+	//	//What happened ，Why one character less???
+	//	r.Method = resetReqMethod(r.Method)
+	//	if hostTmp, err := file.GetDb().GetInfoByHost(r.Host, r); err != nil {
+	//		logs.Notice("the url %s %s %s can't be parsed!", r.URL.Scheme, r.Host, r.RequestURI)
+	//		break
+	//	} else if host != hostTmp {
+	//		host = hostTmp
+	//		isReset = true
+	//		connClient.Close()
+	//		goto reset
+	//	}
+	//}
 	wg.Wait()
 }
 

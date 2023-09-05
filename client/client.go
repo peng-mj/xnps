@@ -76,6 +76,7 @@ retry:
 	//start a channel connection
 	go s.newChan()
 	//start health check if the it's open
+	//检查客户端时间
 	if s.cnf != nil && len(s.cnf.Healths) > 0 {
 		go heathCheck(s.cnf.Healths, s.signal)
 	}

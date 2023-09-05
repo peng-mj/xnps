@@ -3,16 +3,36 @@ package file
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/astaxie/beego/logs"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
-
 	"xnps/lib/common"
+	"xnps/lib/database/models"
 	"xnps/lib/rate"
 )
+
+func NewDb(dbFile string) *DbUtils {
+	var Db = DbUtils{}
+	var err error
+	Db.GDb, err = gorm.Open(sqlite.Open(dbFile), &gorm.Config{})
+	if err != nil {
+		fmt.Println("打开数据库失败")
+		os.Exit(-1)
+	} else {
+		err := Db.GDb.AutoMigrate(
+			models.Client{})
+		if err != nil {
+			logs.Info("创建数据表失败", err)
+		}
+	}
+	return &Db
+}
 
 func NewJsonDb(runPath string) *JsonDb {
 	return &JsonDb{
@@ -40,7 +60,7 @@ type JsonDb struct {
 func (s *JsonDb) LoadTaskFromJsonFile() {
 	loadSyncMapFromFile(s.TaskFilePath, func(v string) {
 		var err error
-		post := new(Tunnel)
+		post := new(models.Tunnel)
 		if json.Unmarshal([]byte(v), &post) != nil {
 			return
 		}
@@ -56,7 +76,7 @@ func (s *JsonDb) LoadTaskFromJsonFile() {
 
 func (s *JsonDb) LoadClientFromJsonFile() {
 	loadSyncMapFromFile(s.ClientFilePath, func(v string) {
-		post := new(Client)
+		post := new(models.Client)
 		if json.Unmarshal([]byte(v), &post) != nil {
 			return
 		}
@@ -77,7 +97,7 @@ func (s *JsonDb) LoadClientFromJsonFile() {
 func (s *JsonDb) LoadHostFromJsonFile() {
 	loadSyncMapFromFile(s.HostFilePath, func(v string) {
 		var err error
-		post := new(Host)
+		post := new(models.Host)
 		if json.Unmarshal([]byte(v), &post) != nil {
 			return
 		}
@@ -91,9 +111,9 @@ func (s *JsonDb) LoadHostFromJsonFile() {
 	})
 }
 
-func (s *JsonDb) GetClient(id int) (c *Client, err error) {
+func (s *JsonDb) GetClient(id int) (c *models.Client, err error) {
 	if v, ok := s.Clients.Load(id); ok {
-		c = v.(*Client)
+		c = v.(*models.Client)
 		return
 	}
 	err = errors.New("未找到客户端")
@@ -156,20 +176,20 @@ func storeSyncMapToFile(m sync.Map, filePath string) {
 		var b []byte
 		var err error
 		switch value.(type) {
-		case *Tunnel:
-			obj := value.(*Tunnel)
+		case *models.Tunnel:
+			obj := value.(*models.Tunnel)
 			if obj.NoStore {
 				return true
 			}
 			b, err = json.Marshal(obj)
-		case *Host:
-			obj := value.(*Host)
+		case *models.Host:
+			obj := value.(*models.Host)
 			if obj.NoStore {
 				return true
 			}
 			b, err = json.Marshal(obj)
-		case *Client:
-			obj := value.(*Client)
+		case *models.Client:
+			obj := value.(*models.Client)
 			if obj.NoStore {
 				return true
 			}

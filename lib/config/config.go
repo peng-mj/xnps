@@ -32,10 +32,10 @@ type Config struct {
 	content      string
 	title        []string
 	CommonConfig *CommonConfig
-	Hosts        []*file.Host
-	Tasks        []*file.Tunnel
-	Healths      []*file.Health
-	LocalServer  []*LocalServer
+	//Hosts        []*file.Host
+	Tasks       []*file.Tunnel
+	Healths     []*file.Health
+	LocalServer []*LocalServer
 }
 
 func NewConfig(path string) (c *Config, err error) {
@@ -85,9 +85,9 @@ func NewConfig(path string) (c *Config, err error) {
 				c.CommonConfig = dealCommon(nowContent)
 			default:
 				if strings.Index(nowContent, "host") > -1 {
-					h := dealHost(nowContent)
-					h.Remark = getTitleContent(c.title[i])
-					c.Hosts = append(c.Hosts, h)
+					//h := dealHost(nowContent)
+					//h.Remark = getTitleContent(c.title[i])
+					//c.Hosts = append(c.Hosts, h)
 				} else {
 					t := dealTunnel(nowContent)
 					t.Remark = getTitleContent(c.title[i])
@@ -155,38 +155,39 @@ func dealCommon(s string) *CommonConfig {
 	return c
 }
 
-func dealHost(s string) *file.Host {
-	h := &file.Host{}
-	h.Target = new(file.Target)
-	h.Scheme = "all"
-	var headerChange string
-	for _, v := range splitStr(s) {
-		item := strings.Split(v, "=")
-		if len(item) == 0 {
-			continue
-		} else if len(item) == 1 {
-			item = append(item, "")
-		}
-		switch strings.TrimSpace(item[0]) {
-		case "host":
-			h.Host = item[1]
-		case "target_addr":
-			h.Target.TargetStr = strings.Replace(item[1], ",", "\n", -1)
-		case "host_change":
-			h.HostChange = item[1]
-		case "scheme":
-			h.Scheme = item[1]
-		case "location":
-			h.Location = item[1]
-		default:
-			if strings.Contains(item[0], "header") {
-				headerChange += strings.Replace(item[0], "header_", "", -1) + ":" + item[1] + "\n"
-			}
-			h.HeaderChange = headerChange
-		}
-	}
-	return h
-}
+//
+//func dealHost(s string) *file.Host {
+//	h := &file.Host{}
+//	h.Target = new(file.Target)
+//	h.Scheme = "all"
+//	var headerChange string
+//	for _, v := range splitStr(s) {
+//		item := strings.Split(v, "=")
+//		if len(item) == 0 {
+//			continue
+//		} else if len(item) == 1 {
+//			item = append(item, "")
+//		}
+//		switch strings.TrimSpace(item[0]) {
+//		case "host":
+//			h.Host = item[1]
+//		case "target_addr":
+//			h.Target.TargetStr = strings.Replace(item[1], ",", "\n", -1)
+//		case "host_change":
+//			h.HostChange = item[1]
+//		case "scheme":
+//			h.Scheme = item[1]
+//		case "location":
+//			h.Location = item[1]
+//		default:
+//			if strings.Contains(item[0], "header") {
+//				headerChange += strings.Replace(item[0], "header_", "", -1) + ":" + item[1] + "\n"
+//			}
+//			h.HeaderChange = headerChange
+//		}
+//	}
+//	return h
+//}
 
 func dealHealth(s string) *file.Health {
 	h := &file.Health{}

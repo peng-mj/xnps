@@ -15,7 +15,8 @@ import (
 )
 
 type DbUtils struct {
-	GDb *gorm.DB
+	GDb    *gorm.DB
+	JsonDb *JsonDb
 }
 
 var (
@@ -31,7 +32,7 @@ func GetDb() *DbUtils {
 		//jsonDb.LoadTaskFromJsonFile()
 		//jsonDb.LoadHostFromJsonFile()
 
-		Db = NewDb("data.db")
+		Db = NewDb("conf/data.db")
 	})
 	return Db
 }
@@ -49,7 +50,6 @@ func GetMapKeys(m sync.Map, isSort bool, sortKey, order string) (keys []int) {
 }
 
 func (s *DbUtils) GetClientList(start, length int, search, sort, order string, clientId int) ([]models.Client2, int) {
-	//list := make([]*models.Client, 0)
 	var cli []models.Client2
 	s.GDb.Model(models.Client2{}).Where("valid=1").Find(&cli)
 	return cli, len(cli)
@@ -67,7 +67,7 @@ func (s *DbUtils) GetIdByVerifyKey(vKey string, addr string) (id int, err error)
 
 func (s *DbUtils) NewTask(t *models.Tunnel) (err error) {
 	s.JsonDb.Tasks.Range(func(key, value interface{}) bool {
-		v := value.(*file.Tunnel)
+		v := value.(*models.Tunnel)
 		if (v.Mode == "secret" || v.Mode == "p2p") && v.Password == t.Password {
 			err = errors.New(fmt.Sprintf("secret mode keys %s must be unique", t.Password))
 			return false
@@ -77,13 +77,13 @@ func (s *DbUtils) NewTask(t *models.Tunnel) (err error) {
 	if err != nil {
 		return
 	}
-	t.Flow = new(file.Flow)
+	t.Flow = new(models.Flow)
 	s.JsonDb.Tasks.Store(t.Id, t)
 	s.JsonDb.StoreTasksToJsonFile()
 	return
 }
 
-func (s *DbUtils) UpdateTask(t *file.Tunnel) error {
+func (s *DbUtils) UpdateTask(t *models.Tunnel) error {
 	s.JsonDb.Tasks.Store(t.Id, t)
 	s.JsonDb.StoreTasksToJsonFile()
 	return nil
@@ -96,10 +96,10 @@ func (s *DbUtils) DelTask(id int) error {
 }
 
 // md5 password
-func (s *DbUtils) GetTaskByMd5Password(p string) (t *file.Tunnel) {
+func (s *DbUtils) GetTaskByMd5Password(p string) (t *models.Tunnel) {
 	s.JsonDb.Tasks.Range(func(key, value interface{}) bool {
-		if crypt.Md5(value.(*file.Tunnel).Password) == p {
-			t = value.(*file.Tunnel)
+		if crypt.Md5(value.(*models.Tunnel).Password) == p {
+			t = value.(*models.Tunnel)
 			return false
 		}
 		return true
@@ -107,9 +107,9 @@ func (s *DbUtils) GetTaskByMd5Password(p string) (t *file.Tunnel) {
 	return
 }
 
-func (s *DbUtils) GetTask(id int) (t *file.Tunnel, err error) {
+func (s *DbUtils) GetTask(id int) (t *models.Tunnel, err error) {
 	if v, ok := s.JsonDb.Tasks.Load(id); ok {
-		t = v.(*file.Tunnel)
+		t = v.(*models.Tunnel)
 		return
 	}
 	err = errors.New("not found")
@@ -122,10 +122,10 @@ func (s *DbUtils) DelHost(id int) error {
 	return nil
 }
 
-func (s *DbUtils) IsHostExist(h *file.Host) bool {
+func (s *DbUtils) IsHostExist(h *models.Host) bool {
 	var exist bool
 	s.JsonDb.Hosts.Range(func(key, value interface{}) bool {
-		v := value.(*file.Host)
+		v := value.(*models.Host)
 		if v.Id != h.Id && v.Host == h.Host && h.Location == v.Location && (v.Scheme == "all" || v.Scheme == h.Scheme) {
 			exist = true
 			return false
@@ -135,26 +135,26 @@ func (s *DbUtils) IsHostExist(h *file.Host) bool {
 	return exist
 }
 
-func (s *DbUtils) NewHost(t *file.Host) error {
+func (s *DbUtils) NewHost(t *models.Host) error {
 	if t.Location == "" {
 		t.Location = "/"
 	}
 	if s.IsHostExist(t) {
 		return errors.New("host has exist")
 	}
-	t.Flow = new(file.Flow)
+	t.Flow = new(models.Flow)
 	s.JsonDb.Hosts.Store(t.Id, t)
 	s.JsonDb.StoreHostToJsonFile()
 	return nil
 }
 
-func (s *DbUtils) GetHost(start, length int, id int, search string) ([]*file.Host, int) {
-	list := make([]*file.Host, 0)
+func (s *DbUtils) GetHost(start, length int, id int, search string) ([]*models.Host, int) {
+	list := make([]*models.Host, 0)
 	var cnt int
 	keys := GetMapKeys(s.JsonDb.Hosts, false, "", "")
 	for _, key := range keys {
 		if value, ok := s.JsonDb.Hosts.Load(key); ok {
-			v := value.(*file.Host)
+			v := value.(*models.Host)
 			if search != "" && !(v.Id == common.GetIntNoErrByStr(search) || strings.Contains(v.Host, search) || strings.Contains(v.Remark, search) || strings.Contains(v.Client.VerifyKey, search)) {
 				continue
 			}
@@ -177,7 +177,7 @@ func (s *DbUtils) DelClient(id int) error {
 	return nil
 }
 
-func (s *DbUtils) NewClient(c *file.Client) error {
+func (s *DbUtils) NewClient(c *models.Client) error {
 	var isNotSet bool
 	if c.WebUserName != "" && !s.VerifyUserName(c.WebUserName, c.Id) {
 		return errors.New("web login username duplicate, please reset")
@@ -203,7 +203,7 @@ reset:
 		c.Id = int(s.JsonDb.GetClientId())
 	}
 	if c.Flow == nil {
-		c.Flow = new(file.Flow)
+		c.Flow = new(models.Flow)
 	}
 	s.JsonDb.Clients.Store(c.Id, c)
 	s.JsonDb.StoreClientsToJsonFile()
@@ -213,7 +213,7 @@ reset:
 func (s *DbUtils) VerifyVkey(vkey string, id int) (res bool) {
 	res = true
 	s.JsonDb.Clients.Range(func(key, value interface{}) bool {
-		v := value.(*file.Client)
+		v := value.(*models.Client)
 		if v.VerifyKey == vkey && v.Id != id {
 			res = false
 			return false
@@ -226,7 +226,7 @@ func (s *DbUtils) VerifyVkey(vkey string, id int) (res bool) {
 func (s *DbUtils) VerifyUserName(username string, id int) (res bool) {
 	res = true
 	s.JsonDb.Clients.Range(func(key, value interface{}) bool {
-		v := value.(*file.Client)
+		v := value.(*models.Client)
 		if v.WebUserName == username && v.Id != id {
 			res = false
 			return false
@@ -236,7 +236,7 @@ func (s *DbUtils) VerifyUserName(username string, id int) (res bool) {
 	return res
 }
 
-func (s *DbUtils) UpdateClient(t *file.Client) error {
+func (s *DbUtils) UpdateClient(t *models.Client) error {
 	s.JsonDb.Clients.Store(t.Id, t)
 	if t.RateLimit == 0 {
 		t.Rate = rate.NewRate(int64(2 << 23))
@@ -254,9 +254,9 @@ func (s *DbUtils) IsPubClient(id int) bool {
 	return false
 }
 
-func (s *DbUtils) GetClient(id int) (c *file.Client, err error) {
+func (s *DbUtils) GetClient(id int) (c *models.Client, err error) {
 	if v, ok := s.JsonDb.Clients.Load(id); ok {
-		c = v.(*file.Client)
+		c = v.(*models.Client)
 		return
 	}
 	err = errors.New("未找到客户端")
@@ -266,7 +266,7 @@ func (s *DbUtils) GetClient(id int) (c *file.Client, err error) {
 func (s *DbUtils) GetClientIdByVkey(vkey string) (id int, err error) {
 	var exist bool
 	s.JsonDb.Clients.Range(func(key, value interface{}) bool {
-		v := value.(*file.Client)
+		v := value.(*models.Client)
 		if crypt.Md5(v.VerifyKey) == vkey {
 			exist = true
 			id = v.Id
@@ -281,9 +281,9 @@ func (s *DbUtils) GetClientIdByVkey(vkey string) (id int, err error) {
 	return
 }
 
-func (s *DbUtils) GetHostById(id int) (h *file.Host, err error) {
+func (s *DbUtils) GetHostById(id int) (h *models.Host, err error) {
 	if v, ok := s.JsonDb.Hosts.Load(id); ok {
-		h = v.(*file.Host)
+		h = v.(*models.Host)
 		return
 	}
 	err = errors.New("The host could not be parsed")
@@ -291,12 +291,12 @@ func (s *DbUtils) GetHostById(id int) (h *file.Host, err error) {
 }
 
 // get key by host from x
-func (s *DbUtils) GetInfoByHost(host string, r *http.Request) (h *file.Host, err error) {
-	var hosts []*file.Host
+func (s *DbUtils) GetInfoByHost(host string, r *http.Request) (h *models.Host, err error) {
+	var hosts []*models.Host
 	//Handling Ported Access
 	host = common.GetIpByAddr(host)
 	s.JsonDb.Hosts.Range(func(key, value interface{}) bool {
-		v := value.(*file.Host)
+		v := value.(*models.Host)
 		if v.IsClose {
 			return true
 		}
