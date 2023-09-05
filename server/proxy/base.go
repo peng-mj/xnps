@@ -7,11 +7,11 @@ import (
 	"sort"
 	"sync"
 
-	"ehang.io/nps/bridge"
-	"ehang.io/nps/lib/common"
-	"ehang.io/nps/lib/conn"
-	"ehang.io/nps/lib/file"
 	"github.com/astaxie/beego/logs"
+	"xnps/bridge"
+	"xnps/lib/common"
+	"xnps/lib/conn"
+	"xnps/lib/file"
 )
 
 type Service interface {

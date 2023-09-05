@@ -1,14 +1,14 @@
 package goroutine
 
 import (
-	"ehang.io/nps/lib/common"
-	"ehang.io/nps/lib/file"
 	"github.com/astaxie/beego/logs"
 	"github.com/panjf2000/ants/v2"
 	"io"
 	"net"
 	"strings"
 	"sync"
+	"xnps/lib/common"
+	"xnps/lib/file"
 )
 
 type connGroup struct {

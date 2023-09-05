@@ -7,11 +7,11 @@ import (
 	"sync"
 	"time"
 
-	"ehang.io/nps/bridge"
-	"ehang.io/nps/lib/common"
-	"ehang.io/nps/lib/conn"
-	"ehang.io/nps/lib/file"
 	"github.com/astaxie/beego/logs"
+	"xnps/bridge"
+	"xnps/lib/common"
+	"xnps/lib/conn"
+	"xnps/lib/file"
 )
 
 type UdpModeServer struct {
@@ -27,7 +27,7 @@ func NewUdpModeServer(bridge *bridge.Bridge, task *file.Tunnel) *UdpModeServer {
 	return s
 }
 
-//开始
+// 开始
 func (s *UdpModeServer) Start() error {
 	var err error
 	if s.task.ServerIp == "" {

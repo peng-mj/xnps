@@ -1,4 +1,4 @@
-module ehang.io/nps
+module xnps
 
 go 1.15
 
