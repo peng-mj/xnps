@@ -1,17 +1,15 @@
-package file
+package models
 
 import (
-	"gorm.io/gorm"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+	"xnps/lib/database"
 
 	"github.com/pkg/errors"
 	"xnps/lib/rate"
 )
-
-var OrmDb *gorm.DB
 
 type Flow struct {
 	ExportFlow int64
@@ -32,6 +30,45 @@ type Config struct {
 	P        string
 	Compress bool
 	Crypt    bool
+}
+type AreaHistory struct {
+	ID          int64   `gorm:"column:id;type:int;auto_increment;not null;primaryKey;autoIncrement:true" json:"id"`
+	UpdateTime  int64   `gorm:"column:update_time;type:bigint(20);not null" json:"update_time"`
+	RoastInfoID int64   `gorm:"column:roast_info_id;type:bigint(11);not null" json:"roast_info_id"`
+	St1         float64 `gorm:"column:st1;type:double;not null" json:"st1"`
+	St2         float64 `gorm:"column:st2;type:double;not null" json:"st2"`
+	St3         float64 `gorm:"column:st3;type:double;not null" json:"st3"`
+	St4         float64 `gorm:"column:st4;type:double;not null" json:"st4"`
+	St5         float64 `gorm:"column:st5;type:double;not null" json:"st5"`
+	St6         float64 `gorm:"column:st6;type:double;not null" json:"st6"`
+	St7         float64 `gorm:"column:st7;type:double;not null" json:"st7"`
+	St8         float64 `gorm:"column:st8;type:double;not null" json:"st8"`
+	St9         float64 `gorm:"column:st9;type:double;not null" json:"st9"`
+	St10        float64 `gorm:"column:st10;type:double;not null" json:"st10"`
+}
+type Client2 struct {
+	Id              int64    `gorm:"column:id;type:int;auto_increment;not null;primaryKey;" json:"Id"`
+	VerifyKey       string   `gorm:"column:verify_key;type:text;not null" json:"VerifyKey"`
+	Addr            string   `gorm:"column:addr;type:text" json:"Addr"`
+	Remark          string   `gorm:"column:remark;type:text" json:"Remark"`
+	Valid           *int     `gorm:"column:valid;type:integer;default:0;not null" json:"Valid"`
+	Connected       *int     `gorm:"column:connected;type:integer;default:0;not null" json:"Connected"`
+	RateLimit       *int     `gorm:"column:rate_limit;type:integer;default:0;not null" json:"RateLimit"`
+	FlowExport      *float32 `gorm:"column:flow_export;type:real;not null;default:0" json:"FlowExport"`
+	FlowInle        *float32 `gorm:"column:flow_inle;type:real;not null;default:0" json:"FlowInle"`
+	NowRate         *float32 `gorm:"column:now_rate;type:real;default:0;not null" json:"NowRate"`
+	MaxConn         int32    `gorm:"column:max_conn;type:integer;default:100;not null" json:"MaxConn"`
+	NowConn         int32    `gorm:"column:now_conn;type:integer;default:0;not null" json:"NowConn"`
+	WebUser         string   `gorm:"column:web_user;type:text" json:"WebUser"`
+	WebPasswd       string   `gorm:"column:web_passwd;type:text" json:"WebPasswd"`
+	AllowFileConfig string   `gorm:"column:allow_file_config;type:text" json:"AllowFileConfig"`
+	MaxTunnelNum    string   `gorm:"column:max_tunnel_num;type:integer" json:"MaxTunnelNum"`
+	Version         string   `gorm:"column:version;type:text" json:"Version"`
+	BlackId         *int     `gorm:"column:black_id;type:integer;default:0;not null" json:"BlackId"`
+}
+
+func (*Client2) TableName() string {
+	return "client"
 }
 
 type Client struct {
@@ -93,7 +130,7 @@ func (s *Client) GetConn() bool {
 }
 
 func (s *Client) HasTunnel(t *Tunnel) (exist bool) {
-	GetDb().JsonDb.Tasks.Range(func(key, value interface{}) bool {
+	file.GetDb().JsonDb.Tasks.Range(func(key, value interface{}) bool {
 		v := value.(*Tunnel)
 		if v.Client.Id == s.Id && v.Port == t.Port && t.Port != 0 {
 			exist = true
@@ -105,7 +142,7 @@ func (s *Client) HasTunnel(t *Tunnel) (exist bool) {
 }
 
 func (s *Client) GetTunnelNum() (num int) {
-	GetDb().JsonDb.Tasks.Range(func(key, value interface{}) bool {
+	file.GetDb().JsonDb.Tasks.Range(func(key, value interface{}) bool {
 		v := value.(*Tunnel)
 		if v.Client.Id == s.Id {
 			num++
@@ -117,7 +154,7 @@ func (s *Client) GetTunnelNum() (num int) {
 
 func (s *Client) HasHost(h *Host) bool {
 	var has bool
-	GetDb().JsonDb.Hosts.Range(func(key, value interface{}) bool {
+	file.GetDb().JsonDb.Hosts.Range(func(key, value interface{}) bool {
 		v := value.(*Host)
 		if v.Client.Id == s.Id && v.Host == h.Host && h.Location == v.Location {
 			has = true
@@ -139,41 +176,6 @@ type Tunnel struct {
 	Ports        string
 	Flow         *Flow
 	Password     string
-	Remark       string
-	TargetAddr   string
-	NoStore      bool
-	IsHttp       bool
-	LocalPath    string
-	StripPre     string
-	Target       *Target
-	MultiAccount *MultiAccount
-	Health
-	sync.RWMutex
-}
-
-//type DetectionDevice struct {
-//	Id             *int     `gorm:"column:id;not null;type:int;primaryKey;autoIncrement" json:"Id"`
-//	LocationId     *int     `gorm:"column:location_id;type:int" json:"LocationId"`
-//	DeviceId       string   `gorm:"column:device_id;not null;type:varchar(50)" json:"DeviceId"`
-//	Status         string   `gorm:"column:status;type:varchar(2);default:0" json:"Status"`
-//	BatteryVoltage *float64 `gorm:"column:battery_voltage;type:float;default:0" json:"BatteryVoltage"`
-//	IsOnline       string   `gorm:"column:is_online;type:varchar(2);default:0" json:"IsOnline"`
-//	Location       string   `gorm:"column:location;type:varchar(200)" json:"Location"`
-//	UpdateTime     *int64   `gorm:"column:update_time;type:bigint;default:1577808000" json:"UpdateTime"`
-//	Content        string   `gorm:"column:comment;type:varchar(200);default:0" json:"Content"`
-//}
-
-type TunnelOrm struct {
-	Id           *int   `gorm:"column:id;not null;type:int;primaryKey;autoIncrement" json:"Id"`
-	Port         *int   `gorm:"column:port;not null;type:int;primaryKey;autoIncrement" json:"Port"`
-	ServerIp     string `gorm:"column:server_ip;not null;type:int;primaryKey;autoIncrement" json:"ServerIp"`
-	Mode         string `gorm:"column:mode;not null;type:int;primaryKey;autoIncrement" json:"Mode"`
-	Status       bool   `gorm:"column:status;not null;type:int;primaryKey;autoIncrement" json:"Status"`
-	RunStatus    bool   `gorm:"column:run_status;not null;type:int;primaryKey;autoIncrement" json:"RunStatus"`
-	Client       *int   `gorm:"column:client_id;not null;type:int;primaryKey;autoIncrement" json:"Client"`
-	Ports        string `gorm:"column:ports;not null;type:int;primaryKey;autoIncrement" json:"Ports"`
-	Flow         *Flow  `gorm:"column:flow_id;not null;type:int;primaryKey;autoIncrement" json:"Flow"`
-	Password     string `gorm:"column:passwd;not null;type:int;primaryKey;autoIncrement" json:"Password"`
 	Remark       string
 	TargetAddr   string
 	NoStore      bool
