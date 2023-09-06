@@ -9,6 +9,7 @@ import (
 	"xnps/server"
 )
 
+// ClientController 客户端管理相关API
 type ClientController struct {
 	BaseController
 }

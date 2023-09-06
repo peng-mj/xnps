@@ -2,7 +2,6 @@ package database
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/astaxie/beego/logs"
 	"gorm.io/driver/sqlite"
@@ -14,7 +13,6 @@ import (
 	"sync/atomic"
 	"xnps/lib/common"
 	"xnps/lib/database/models"
-	"xnps/lib/rate"
 )
 
 var Db *DbUtils
@@ -54,53 +52,55 @@ type JsonDb struct {
 	ClientFilePath   string //client file path
 }
 
-func (s *JsonDb) LoadTaskFromJsonFile() {
-	loadSyncMapFromFile(s.TaskFilePath, func(v string) {
-		var err error
-		post := new(models.Tunnel)
-		if json.Unmarshal([]byte(v), &post) != nil {
-			return
-		}
-		if post.Client, err = s.GetClientById(post.Client.Id); err != nil {
-			return
-		}
-		s.Tasks.Store(post.Id, post)
-		if post.Id > int(s.TaskIncreaseId) {
-			s.TaskIncreaseId = int32(post.Id)
-		}
-	})
-}
+//func (s *JsonDb) LoadTaskFromJsonFile() {
+//	loadSyncMapFromFile(s.TaskFilePath, func(v string) {
+//		var err error
+//		post := new(models.Tunnel)
+//		if json.Unmarshal([]byte(v), &post) != nil {
+//			return
+//		}
+//		if post.Client, err = s.GetClientById(post.Client.Id); err != nil {
+//			return
+//		}
+//		s.Tasks.Store(post.Id, post)
+//		if post.Id > int(s.TaskIncreaseId) {
+//			s.TaskIncreaseId = int32(post.Id)
+//		}
+//	})
+//}
 
-func (s *JsonDb) LoadClientFromJsonFile() {
-	loadSyncMapFromFile(s.ClientFilePath, func(v string) {
-		post := new(models.Client)
-		if json.Unmarshal([]byte(v), &post) != nil {
-			return
-		}
-		if post.RateLimit > 0 {
-			post.Rate = rate.NewRate(int64(post.RateLimit * 1024))
-		} else {
-			post.Rate = rate.NewRate(int64(2 << 23))
-		}
-		post.Rate.Start()
-		post.NowConn = 0
-		s.Clients.Store(post.Id, post)
-		if post.Id > int(s.ClientIncreaseId) {
-			s.ClientIncreaseId = int32(post.Id)
-		}
-	})
-}
+//func (s *JsonDb) LoadClientFromJsonFile() {
+//	loadSyncMapFromFile(s.ClientFilePath, func(v string) {
+//		post := new(models.Client)
+//		if json.Unmarshal([]byte(v), &post) != nil {
+//			return
+//		}
+//		if post.RateLimit > 0 {
+//			post.Rate = rate.NewRate(int64(post.RateLimit * 1024))
+//		} else {
+//			post.Rate = rate.NewRate(int64(2 << 23))
+//		}
+//		post.Rate.Start()
+//		post.NowConn = 0
+//		s.Clients.Store(post.Id, post)
+//		if post.Id > s.ClientIncreaseId) {
+//			s.ClientIncreaseId = int32(post.Id)
+//		}
+//	})
+//}
 
-func (s *JsonDb) GetClientById(id int) (c *models.Client, err error) {
-	if v, ok := s.Clients.Load(id); ok {
-		c = v.(*models.Client)
-		return
-	}
-	err = errors.New("未找到客户端")
-	return
-}
+//func (s *JsonDb) GetClientById(id int64) (c *models.Client, err error) {
+//	var cli models.Client
+//
+//	if v, ok := s.Clients.Load(id); ok {
+//		c = v.(*models.Client)
+//		return
+//	}
+//	err = errors.New("未找到客户端")
+//	return
+//}
 
-var hostLock sync.Mutex
+//var hostLock sync.Mutex
 
 //
 //func (s *JsonDb) StoreHostToJsonFile() {
@@ -167,7 +167,7 @@ func storeSyncMapToFile(m sync.Map, filePath string) {
 			b, err = json.Marshal(obj)
 		case *models.Client:
 			obj := value.(*models.Client)
-			if obj.NoStore {
+			if obj.Valid {
 				return true
 			}
 			b, err = json.Marshal(obj)

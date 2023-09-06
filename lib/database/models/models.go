@@ -32,11 +32,11 @@ type Config struct {
 	Crypt    bool
 }
 
-type Client2 struct {
+type Client struct {
 	Id              int64      `gorm:"column:id;type:int;auto_increment;not null;primaryKey;" json:"Id"`
 	VerifyKey       string     `gorm:"column:verify_key;type:text;not null" json:"VerifyKey"`
-	Addr            string     `gorm:"column:addr;type:text" json:"Addr"`
-	Remark          string     `gorm:"column:remark;type:text" json:"Remark"`
+	Addr            string     `gorm:"column:addr;type:text;not null;default: " json:"Addr"`
+	Remark          string     `gorm:"column:remark;type:text;not null;default: " json:"Remark"`
 	Valid           bool       `gorm:"column:valid;type:integer;default:0;not null" json:"Valid"`
 	Connected       bool       `gorm:"column:connected;type:integer;default:0;not null" json:"Connected"`
 	RateLimit       int        `gorm:"column:rate_limit;type:integer;default:0;not null" json:"RateLimit"`
@@ -45,74 +45,44 @@ type Client2 struct {
 	NowRate         float32    `gorm:"column:now_rate;type:real;default:0;not null" json:"NowRate"`
 	MaxConn         int32      `gorm:"column:max_conn;type:integer;default:100;not null" json:"MaxConn"`
 	NowConn         int32      `gorm:"column:now_conn;type:integer;default:0;not null" json:"NowConn"`
-	WebUser         string     `gorm:"column:web_user;type:text" json:"WebUser"`
-	WebPasswd       string     `gorm:"column:web_passwd;type:text" json:"WebPasswd"`
+	WebUser         string     `gorm:"column:web_user;type:text;not null;default:user" json:"WebUser"`
+	WebPasswd       string     `gorm:"column:web_passwd;type:text;not null;default:123" json:"WebPasswd"`
 	AllowFileConfig bool       `gorm:"column:allow_file_config;type:integer;default:1;not null" json:"AllowFileConfig"`
 	MaxTunnelNum    int        `gorm:"column:max_tunnel_num;type:integer;default:100;not null" json:"MaxTunnelNum"`
 	Version         string     `gorm:"column:version;type:text;default:Null;not null" json:"Version"`
-	BlackId         *int       `gorm:"column:black_id;type:integer;default:0;not null" json:"BlackId"`
+	BlackId         int        `gorm:"column:black_id;type:integer;default:0;not null" json:"BlackId"`
 	Flow            *Flow      `json:"-"`
 	Rate            *rate.Rate `json:"-"`
 	sync.RWMutex
 }
 
-func (*Client2) TableName() string {
+func (*Client) TableName() string {
 	return "client"
 }
 
-type Client struct {
-	//Cnf             *Config
-	Id              int        //id
-	VerifyKey       string     //verify key
-	Addr            string     //the ip of client
-	Remark          string     //remark
-	Status          bool       //is allow connect
-	IsConnect       bool       //is the client connect
-	RateLimit       int        //rate /kb
-	Flow            *Flow      //flow setting
-	Rate            *rate.Rate //rate limit
-	NoStore         bool       //no store to file
-	NoDisplay       bool       //no display on web
-	MaxConn         int        //the max connection num of client allow
-	NowConn         int32      //the connection num of now
-	WebUserName     string     //the username of web login
-	WebPassword     string     //the password of web login
-	ConfigConnAllow bool       //is allow connected by config file
-	MaxTunnelNum    int
-	Version         string
-	BlackIpList     []string
-	sync.RWMutex
-}
-
-func NewClient(vKey string, noStore bool, noDisplay bool) *Client {
-	return &Client{
-		//Cnf:       new(Config),
-		Id:        0,
-		VerifyKey: vKey,
-		Addr:      "",
-		Remark:    "",
-		Status:    true,
-		IsConnect: false,
-		RateLimit: 0,
-		Flow:      new(Flow),
-		Rate:      nil,
-		NoStore:   noStore,
-		RWMutex:   sync.RWMutex{},
-		NoDisplay: noDisplay,
-	}
-}
-func NewClient2(vKey string, noStore bool, noDisplay bool) *Client2 {
-	return &Client2{
-		Id:        0,
-		VerifyKey: vKey,
-		Addr:      "",
-		Remark:    "",
-		RateLimit: 0,
-		Flow:      new(Flow),
-		Rate:      nil,
-		RWMutex:   sync.RWMutex{},
-	}
-}
+//type Client struct {
+//	//Cnf             *Config
+//	Id              int        //id
+//	VerifyKey       string     //verify key
+//	Addr            string     //the ip of client
+//	Remark          string     //remark
+//	Status          bool       //is allow connect
+//	IsConnect       bool       //is the client connect
+//	RateLimit       int        //rate /kb
+//	Flow            *Flow      //flow setting
+//	Rate            *rate.Rate //rate limit
+//	NoStore         bool       //no store to file
+//	NoDisplay       bool       //no display on web
+//	MaxConn         int        //the max connection num of client allow
+//	NowConn         int32      //the connection num of now
+//	WebUserName     string     //the username of web login
+//	WebPassword     string     //the password of web login
+//	ConfigConnAllow bool       //is allow connected by config file
+//	MaxTunnelNum    int
+//	Version         string
+//	BlackIpList     []string
+//	sync.RWMutex
+//}
 
 func (s *Client) CutConn() {
 	atomic.AddInt32(&s.NowConn, 1)
@@ -123,7 +93,7 @@ func (s *Client) AddConn() {
 }
 
 func (s *Client) GetConn() bool {
-	if s.MaxConn == 0 || int(s.NowConn) < s.MaxConn {
+	if s.MaxConn == 0 || s.NowConn < s.MaxConn {
 		s.CutConn()
 		return true
 	}
@@ -154,22 +124,23 @@ func (s *Client) GetTunnelNum() (num int) {
 }
 
 type Tunnel struct {
-	Id           int           `gorm:"column:primaryKey;id" json:"Id"`
+	Id           int64         `gorm:"column:id;type:integer;primaryKey" json:"Id"`
+	ClientId     int           `gorm:"column:client_id;type:integer;" json:"ClientId"`
 	Port         int           `gorm:"column:port;type:integer;not null;default:8080" json:"Port"`
-	ServerIp     string        `gorm:"column:server_ip;type:integer;not null;default:" json:"ServerIp"`
-	Mode         string        `gorm:"column:mode;type:integer;not null;default:" json:"Mode"`
+	ServerIp     string        `gorm:"column:server_ip;type:text;not null;default:" json:"ServerIp"`
+	Mode         string        `gorm:"column:mode;type:text;not null;default:" json:"Mode"`
 	Status       bool          `gorm:"column:status;type:integer;not null;default:" json:"Status"`
 	RunStatus    bool          `gorm:"column:id;type:integer;not null;default:" json:"RunStatus"`
 	Client       *Client       `gorm:"-" json:"-"`
-	Ports        string        `gorm:"column:id;type:integer;not null;default:" json:"Ports"`
+	Ports        string        `gorm:"column:id;type:text;not null;default:80" json:"Ports"`
 	Flow         *Flow         `gorm:"-" json:"-"`
-	Password     string        `gorm:"column:id;type:integer;not null;default:" json:"Password"`
-	Remark       string        `gorm:"column:id;type:integer;not null;default:" json:"Remark"`
-	TargetAddr   string        `gorm:"column:id;type:integer;not null;default:" json:"TargetAddr"`
-	NoStore      bool          `gorm:"column:id;type:integer;not null;default:" json:"NoStore"`
-	IsHttp       bool          `gorm:"column:id;type:integer;not null;default:" json:"IsHttp"`
-	LocalPath    string        `gorm:"column:id;type:integer;not null;default:" json:"LocalPath"`
-	StripPre     string        `gorm:"column:id;type:integer;not null;default:" json:"StripPre"`
+	Password     string        `gorm:"column:passwd;type:text;not null;default:" json:"Password"` //p2p or secret must use passwd
+	Remark       string        `gorm:"column:remark;type:text;not null;default:" json:"Remark"`
+	TargetAddr   string        `gorm:"column:target_addr;type:text;not null;default:" json:"TargetAddr"`
+	NoStore      bool          `gorm:"column:no_store;type:integer;not null;default:0" json:"NoStore"`
+	IsHttp       bool          `gorm:"column:is_http;type:integer;not null;default:0" json:"IsHttp"`
+	LocalPath    string        `gorm:"column:local_path;type:text;not null;default:" json:"LocalPath"`
+	StripPre     string        `gorm:"column:strip_pre;type:text;not null;default:" json:"StripPre"`
 	Target       *Target       `gorm:"-" json:"-"`
 	MultiAccount *MultiAccount `gorm:"-" json:"-"`
 	Health       `gorm:"-" json:"-"`

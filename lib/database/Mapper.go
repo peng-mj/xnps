@@ -7,6 +7,7 @@ import (
 	"gorm.io/gorm"
 	"os"
 	"sort"
+	"strconv"
 	"sync"
 	"xnps/lib/crypt"
 	"xnps/lib/database/models"
@@ -16,6 +17,24 @@ import (
 type DbUtils struct {
 	GDb    *gorm.DB
 	JsonDb *JsonDb
+}
+
+func (s *DbUtils) CheckVKey(vKey string) bool {
+	return s.GDb.Model(models.Client{}).Where("verify_key = ?", vKey).First(new(models.Client)).RowsAffected > 0
+}
+
+func NewClient(vKey string, noStore bool, noDisplay bool) *models.Client {
+	return &models.Client{
+		VerifyKey: vKey,
+		Addr:      "",
+		Remark:    "",
+		Valid:     true,
+		Connected: false,
+		RateLimit: 0,
+		Flow:      new(models.Flow),
+		Rate:      nil,
+		RWMutex:   sync.RWMutex{},
+	}
 }
 
 // init csv from file
@@ -39,16 +58,16 @@ func GetMapKeys(m sync.Map, isSort bool, sortKey, order string) (keys []int) {
 	return
 }
 
-func (s *DbUtils) GetClientList(start, length int, search, sort, order string, clientId int) ([]models.Client2, int) {
-	var cli []models.Client2
-	s.GDb.Model(models.Client2{}).Where("valid=1").Find(&cli)
+func (s *DbUtils) GetClientList(start, length int, search, sort, order string, clientId int) ([]models.Client, int) {
+	var cli []models.Client
+	s.GDb.Model(models.Client{}).Where("valid = 1").Find(&cli)
 	return cli, len(cli)
 
 }
 
 func (s *DbUtils) GetIdByVerifyKey(vKey string, addr string) (id int, err error) {
-	var cli models.Client2
-	res := s.GDb.Model(models.Client2{}).Where("verify_key = ?", vKey).RowsAffected
+	var cli models.Client
+	res := s.GDb.Model(models.Client{}).Where("verify_key = ?", vKey).RowsAffected
 	if res > 0 {
 		return int(cli.Id), nil
 	}
@@ -56,35 +75,39 @@ func (s *DbUtils) GetIdByVerifyKey(vKey string, addr string) (id int, err error)
 }
 
 func (s *DbUtils) NewTask(t *models.Tunnel) (err error) {
-	s.JsonDb.Tasks.Range(func(key, value interface{}) bool {
-		v := value.(*models.Tunnel)
-		if (v.Mode == "secret" || v.Mode == "p2p") && v.Password == t.Password {
+	if t.Mode == "secret" || t.Mode == "p2p" {
+		if s.GDb.Model(models.Tunnel{}).Where("passwd = ?", t.Password).First(new(models.Tunnel)).RowsAffected > 0 {
 			err = errors.New(fmt.Sprintf("secret mode keys %s must be unique", t.Password))
-			return false
 		}
-		return true
-	})
+	}
+
+	//s.JsonDb.Tasks.Range(func(key, value interface{}) bool {
+	//	v := value.(*models.Tunnel)
+	//	if (v.Mode == "secret" || v.Mode == "p2p") && v.Password == t.Password {
+	//		err = errors.New(fmt.Sprintf("secret mode keys %s must be unique", t.Password))
+	//		return false
+	//	}
+	//	return true
+	//})
 	if err != nil {
 		return
 	}
 	t.Flow = new(models.Flow)
-	s.JsonDb.Tasks.Store(t.Id, t)
-	s.JsonDb.StoreTasksToJsonFile()
+	s.GDb.Model(models.Tunnel{}).Create(&t)
 	return
 }
 
 func (s *DbUtils) UpdateTask(t *models.Tunnel) error {
-	s.JsonDb.Tasks.Store(t.Id, t)
-	s.JsonDb.StoreTasksToJsonFile()
+	s.GDb.Model(models.Tunnel{}).Where("id = ?", t.Id).Updates(t)
 	return nil
 }
 
-func (s *DbUtils) DelTask(id int) error {
-	s.JsonDb.Tasks.Delete(id)
-	s.JsonDb.StoreTasksToJsonFile()
+func (s *DbUtils) DelTask(id int64) error {
+	s.GDb.Model(models.Tunnel{}).Delete(models.Tunnel{Id: id})
 	return nil
 }
 
+// TODO:后期修改为sha验证
 // md5 password
 func (s *DbUtils) GetTaskByMd5Password(p string) (t *models.Tunnel) {
 	s.JsonDb.Tasks.Range(func(key, value interface{}) bool {
@@ -97,24 +120,21 @@ func (s *DbUtils) GetTaskByMd5Password(p string) (t *models.Tunnel) {
 	return
 }
 
-func (s *DbUtils) GetTask(id int) (t *models.Tunnel, err error) {
-	if v, ok := s.JsonDb.Tasks.Load(id); ok {
-		t = v.(*models.Tunnel)
-		return
+func (s *DbUtils) GetTaskById(id int64) (tunnel *models.Tunnel, e error) {
+	if s.GDb.Model(models.Tunnel{}).Where("id = ?").First(tunnel).RowsAffected < 1 {
+		e = errors.New(fmt.Sprintf("Tunnel id = %d not found", id))
 	}
-	err = errors.New("not found")
 	return
 }
 
-func (s *DbUtils) DelClient(id int) error {
-	s.JsonDb.Clients.Delete(id)
-	s.JsonDb.StoreClientsToJsonFile()
+func (s *DbUtils) DelClient(id int64) error {
+	s.GDb.Model(models.Client{}).Delete(&models.Client{Id: id})
 	return nil
 }
 
 func (s *DbUtils) NewClient(c *models.Client) error {
 	var isNotSet bool
-	if c.WebUserName != "" && !s.VerifyUserName(c.WebUserName, c.Id) {
+	if c.WebUser != "" && !s.VerifyUserName(c.WebUser, c.Id) {
 		return errors.New("web login username duplicate, please reset")
 	}
 reset:
@@ -132,86 +152,58 @@ reset:
 		if isNotSet {
 			goto reset
 		}
-		return errors.New("Vkey duplicate, please reset")
+		return errors.New("vkey duplicate, please reset")
 	}
-	if c.Id == 0 {
-		c.Id = int(s.JsonDb.GetClientId())
-	}
+	//去掉，让系统自动生成
+	//if c.Id == 0 {
+	//	c.Id = s.JsonDb.GetClientId()
+	//}
 	if c.Flow == nil {
 		c.Flow = new(models.Flow)
 	}
-	s.JsonDb.Clients.Store(c.Id, c)
-	s.JsonDb.StoreClientsToJsonFile()
+	s.GDb.Model(models.Client{}).Create(&c)
 	return nil
 }
 
-func (s *DbUtils) VerifyVkey(vkey string, id int) (res bool) {
-	res = true
-	s.JsonDb.Clients.Range(func(key, value interface{}) bool {
-		v := value.(*models.Client)
-		if v.VerifyKey == vkey && v.Id != id {
-			res = false
-			return false
-		}
-		return true
-	})
-	return res
+func (s *DbUtils) VerifyVkey(vkey string, id int64) (res bool) {
+	return s.GDb.Model(models.Client{}).Where("verify_key = ? AND id = ?", vkey, id).First(new(models.Client)).RowsAffected > 0
 }
 
-func (s *DbUtils) VerifyUserName(username string, id int) (res bool) {
-	res = true
-	s.JsonDb.Clients.Range(func(key, value interface{}) bool {
-		v := value.(*models.Client)
-		if v.WebUserName == username && v.Id != id {
-			res = false
-			return false
-		}
-		return true
-	})
-	return res
+func (s *DbUtils) VerifyUserName(username string, id int64) (res bool) {
+	return s.GDb.Model(models.Client{}).Where("web_user = ? AND id = ?", username, id).First(new(models.Client)).RowsAffected > 0
 }
 
 func (s *DbUtils) UpdateClient(t *models.Client) error {
-	s.JsonDb.Clients.Store(t.Id, t)
+	//s.JsonDb.Clients.Store(t.Id, t)
+
+	res := s.GDb.Model(models.Client{}).Where("id = ?", t.Id).Updates(t).RowsAffected
 	if t.RateLimit == 0 {
 		t.Rate = rate.NewRate(int64(2 << 23))
 		t.Rate.Start()
+	}
+	if res < 1 {
+		return errors.New("have no client or the client have no change where id =  " + strconv.FormatInt(t.Id, 10))
 	}
 	return nil
 }
 
 // 检查是否启用
 func (s *DbUtils) IsPubClient(id int) bool {
-	client, err := s.GetClient(id)
-	if err == nil {
-		return client.NoDisplay
-	}
-	return false
+	return s.GDb.Model(models.Client{}).Where("id = ? and valid = 1", id).First(new(models.Client)).RowsAffected > 0
 }
 
 func (s *DbUtils) GetClient(id int) (c *models.Client, err error) {
-	if v, ok := s.JsonDb.Clients.Load(id); ok {
-		c = v.(*models.Client)
-		return
+	if s.GDb.Model(models.Client{}).Where("id = ? and valid = 1", id).First(c).RowsAffected < 1 {
+		err = errors.New("未找到客户端")
 	}
-	err = errors.New("未找到客户端")
 	return
 }
 
-func (s *DbUtils) GetClientIdByVkey(vkey string) (id int, err error) {
-	var exist bool
-	s.JsonDb.Clients.Range(func(key, value interface{}) bool {
-		v := value.(*models.Client)
-		if crypt.Md5(v.VerifyKey) == vkey {
-			exist = true
-			id = v.Id
-			return false
-		}
-		return true
-	})
-	if exist {
-		return
+func (s *DbUtils) GetClientIdByVkey(vkey string) (id int64, err error) {
+	var cli models.Client
+	if s.GDb.Model(models.Client{}).Where("verify_key = ?", vkey).First(&cli).RowsAffected < 1 {
+		err = errors.New("未找到客户端")
 	}
-	err = errors.New("未找到客户端")
 	return
+
 }

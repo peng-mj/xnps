@@ -14,6 +14,14 @@ type Flow struct {
 	FlowLimit  int64
 	sync.RWMutex
 }
+type FlowInfo struct {
+	Id         int64
+	ExportFlow int64
+	InletFlow  int64
+	FlowLimit  int64
+
+	sync.RWMutex
+}
 
 func (s *Flow) Add(in, out int64) {
 	s.Lock()
@@ -111,28 +119,29 @@ func (s *Client) GetTunnelNum() (num int) {
 	return
 }
 
-//type Tunnel struct {
-//	Id           int64         `gorm:"column:primaryKey;id" json:"Id"`
-//	Port         int32         `gorm:"column:port;type:integer;not null;default:8080" json:"Port"`
-//	ServerIp     string        `gorm:"column:server_ip;type:integer;not null;default:" json:"ServerIp"`
-//	Mode         string        `gorm:"column:mode;type:integer;not null;default:" json:"Mode"`
-//	Status       bool          `gorm:"column:status;type:integer;not null;default:" json:"Status"`
-//	RunStatus    bool          `gorm:"column:run_status;type:integer;not null;default:" json:"RunStatus"`
-//	ClientId     int           `gorm:"column:client_id;type:integer;not null;default:" json:"Client"`
-//	Ports        string        `gorm:"column:ports;type:integer;not null;default:80" json:"Ports"`
-//	FlowId       int           `gorm:"column:flow_id;type:integer;not null;default:" json:"FlowId"`
-//	Password     string        `gorm:"column:passwd;type:integer;not null;default:" json:"Password"`
-//	Remark       string        `gorm:"column:remark;type:integer;not null;default:" json:"Remark"`
-//	TargetAddr   string        `gorm:"column:targetAddr;type:integer;not null;default:" json:"TargetAddr"`
-//	NoStore      bool          `gorm:"column:no_store;type:integer;not null;default:" json:"NoStore"`
-//	IsHttp       bool          `gorm:"column:is_http;type:integer;not null;default:" json:"IsHttp"`
-//	LocalPath    string        `gorm:"column:local_path;type:integer;not null;default:" json:"LocalPath"`
-//	StripPre     string        `gorm:"column:strip_pre;type:integer;not null;default:" json:"StripPre"`
-//	Target       *Target       `gorm:"-" json:"Target"`
-//	MultiAccount *MultiAccount `gorm:"-" json:"MultiAccount"`
-//	Health       `gorm:"-" json:"-"`
-//	sync.RWMutex `gorm:"-" json:"-"`
-//}
+type Tunnel2 struct {
+	Id             int64         `gorm:"column:primaryKey;id" json:"Id"`
+	Port           int32         `gorm:"column:port;type:integer;not null;default:8080" json:"Port"`
+	ServerIp       string        `gorm:"column:server_ip;type:integer;not null;default:" json:"ServerIp"`
+	Mode           string        `gorm:"column:mode;type:integer;not null;default:" json:"Mode"`
+	Status         bool          `gorm:"column:status;type:integer;not null;default:" json:"Status"`
+	RunStatus      bool          `gorm:"column:run_status;type:integer;not null;default:" json:"RunStatus"`
+	ClientId       int           `gorm:"column:client_id;type:integer;not null;default:" json:"Client"`
+	Ports          string        `gorm:"column:ports;type:integer;not null;default:80" json:"Ports"`
+	FlowId         int           `gorm:"column:flow_id;type:integer;not null;default:" json:"FlowId"`
+	Password       string        `gorm:"column:passwd;type:integer;not null;default:" json:"Password"`
+	Remark         string        `gorm:"column:remark;type:integer;not null;default:" json:"Remark"`
+	TargetAddr     string        `gorm:"column:targetAddr;type:integer;not null;default:" json:"TargetAddr"`
+	NoStore        bool          `gorm:"column:no_store;type:integer;not null;default:" json:"NoStore"`
+	IsHttp         bool          `gorm:"column:is_http;type:integer;not null;default:" json:"IsHttp"`
+	LocalPath      string        `gorm:"column:local_path;type:integer;not null;default:" json:"LocalPath"`
+	StripPre       string        `gorm:"column:strip_pre;type:integer;not null;default:" json:"StripPre"`
+	Target         *Target       `gorm:"gorm:ForeignKey:TargetId" json:"Target"`
+	TargetId       int           `gorm:"-" json:"TargetId"`
+	MultiAccount   *MultiAccount `gorm:"gorm:ForeignKey:MultiAccountId" json:"MultiAccount"`
+	MultiAccountId *MultiAccount `gorm:"-" json:"MultiAccountId"`
+	sync.RWMutex   `gorm:"-" json:"-"`
+}
 
 type Tunnel struct {
 	Id           int
@@ -156,19 +165,6 @@ type Tunnel struct {
 	//Health
 	sync.RWMutex
 }
-
-//type Health struct {
-//	HealthCheckTimeout  int
-//	HealthMaxFail       int
-//	HealthCheckInterval int
-//	HealthNextTime      time.Time
-//	HealthMap           map[string]int
-//	HttpHealthUrl       string
-//	HealthRemoveArr     []string
-//	HealthCheckType     string
-//	HealthCheckTarget   string
-//	sync.RWMutex
-//}
 
 type Target struct {
 	nowIndex   int
