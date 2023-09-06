@@ -6,7 +6,6 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
-	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/logs"
 	"io"
 	"net"
@@ -211,6 +210,7 @@ func (s *Conn) GetConfigInfo() (c *file.Client, err error) {
 }
 
 // get task info
+// get task info
 func (s *Conn) GetTaskInfo() (t *file.Tunnel, err error) {
 	//t = new(file.Tunnel)
 	err = s.getInfo(&t)
@@ -218,10 +218,11 @@ func (s *Conn) GetTaskInfo() (t *file.Tunnel, err error) {
 	t.NoStore = true
 	t.Flow = new(file.Flow)
 	t.Target = new(file.Target)
-	t.Target.TargetStr = beego.AppConfig.String("allow_ports")
-	if len(t.Target.TargetStr) < 2 {
-		t.Target.TargetStr = "81-65535"
-	}
+	//TODO:这里判断白名单端口
+	//t.Target.TargetStr = beego.AppConfig.String("allow_ports")
+	//if len(t.Target.TargetStr) < 2 {
+	//	t.Target.TargetStr = "81-65535"
+	//}
 	return
 }
 
