@@ -1,4 +1,4 @@
-package file
+package database
 
 import (
 	"encoding/json"
@@ -16,6 +16,8 @@ import (
 	"xnps/lib/database/models"
 	"xnps/lib/rate"
 )
+
+var Db *DbUtils
 
 func NewDb(dbFile string) *DbUtils {
 	var Db = DbUtils{}
@@ -38,22 +40,17 @@ func NewJsonDb(runPath string) *JsonDb {
 	return &JsonDb{
 		RunPath:        runPath,
 		TaskFilePath:   filepath.Join(runPath, "conf", "tasks.json"),
-		HostFilePath:   filepath.Join(runPath, "conf", "hosts.json"),
 		ClientFilePath: filepath.Join(runPath, "conf", "clients.json"),
 	}
 }
 
 type JsonDb struct {
 	Tasks            sync.Map
-	Hosts            sync.Map
-	HostsTmp         sync.Map
 	Clients          sync.Map
 	RunPath          string
 	ClientIncreaseId int32  //client increased id
 	TaskIncreaseId   int32  //task increased id
-	HostIncreaseId   int32  //host increased id
 	TaskFilePath     string //task file path
-	HostFilePath     string //host file path
 	ClientFilePath   string //client file path
 }
 
@@ -64,7 +61,7 @@ func (s *JsonDb) LoadTaskFromJsonFile() {
 		if json.Unmarshal([]byte(v), &post) != nil {
 			return
 		}
-		if post.Client, err = s.GetClient(post.Client.Id); err != nil {
+		if post.Client, err = s.GetClientById(post.Client.Id); err != nil {
 			return
 		}
 		s.Tasks.Store(post.Id, post)
@@ -94,24 +91,7 @@ func (s *JsonDb) LoadClientFromJsonFile() {
 	})
 }
 
-func (s *JsonDb) LoadHostFromJsonFile() {
-	loadSyncMapFromFile(s.HostFilePath, func(v string) {
-		var err error
-		post := new(models.Host)
-		if json.Unmarshal([]byte(v), &post) != nil {
-			return
-		}
-		if post.Client, err = s.GetClient(post.Client.Id); err != nil {
-			return
-		}
-		s.Hosts.Store(post.Id, post)
-		if post.Id > int(s.HostIncreaseId) {
-			s.HostIncreaseId = int32(post.Id)
-		}
-	})
-}
-
-func (s *JsonDb) GetClient(id int) (c *models.Client, err error) {
+func (s *JsonDb) GetClientById(id int) (c *models.Client, err error) {
 	if v, ok := s.Clients.Load(id); ok {
 		c = v.(*models.Client)
 		return
@@ -122,11 +102,12 @@ func (s *JsonDb) GetClient(id int) (c *models.Client, err error) {
 
 var hostLock sync.Mutex
 
-func (s *JsonDb) StoreHostToJsonFile() {
-	hostLock.Lock()
-	storeSyncMapToFile(s.Hosts, s.HostFilePath)
-	hostLock.Unlock()
-}
+//
+//func (s *JsonDb) StoreHostToJsonFile() {
+//	hostLock.Lock()
+//	storeSyncMapToFile(s.Hosts, s.HostFilePath)
+//	hostLock.Unlock()
+//}
 
 var taskLock sync.Mutex
 
@@ -150,10 +131,6 @@ func (s *JsonDb) GetClientId() int32 {
 
 func (s *JsonDb) GetTaskId() int32 {
 	return atomic.AddInt32(&s.TaskIncreaseId, 1)
-}
-
-func (s *JsonDb) GetHostId() int32 {
-	return atomic.AddInt32(&s.HostIncreaseId, 1)
 }
 
 func loadSyncMapFromFile(filePath string, f func(value string)) {

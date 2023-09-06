@@ -9,7 +9,6 @@ import (
 	"github.com/astaxie/beego/logs"
 	"html/template"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -132,7 +131,7 @@ func ReadAllFromFile(filePath string) ([]byte, error) {
 		return nil, err
 	}
 	defer f.Close()
-	return ioutil.ReadAll(f)
+	return io.ReadAll(f)
 }
 
 // FileExists reports whether the named file or directory exists.
@@ -293,7 +292,6 @@ func IsBlackIp(ipPort, vkey string, blackIpList []string) bool {
 		logs.Error("IP地址[" + ip + "]在隧道[" + vkey + "]黑名单列表内")
 		return true
 	}
-
 	return false
 }
 
@@ -437,7 +435,7 @@ func GetExternalIp() string {
 		return ""
 	}
 	defer resp.Body.Close()
-	content, _ := ioutil.ReadAll(resp.Body)
+	content, _ := io.ReadAll(resp.Body)
 	externalIp = string(content)
 	return externalIp
 }

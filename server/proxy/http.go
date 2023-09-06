@@ -116,7 +116,6 @@ func (s *httpServer) handleTunneling(w http.ResponseWriter, r *http.Request) {
 
 		s.handleHttpHost(conn.NewConn(c), r)
 	}
-
 }
 
 func (s *httpServer) handleHttpHost(c *conn.Conn, r *http.Request) {
@@ -155,7 +154,7 @@ func (s *httpServer) handleHttpHost(c *conn.Conn, r *http.Request) {
 	//if !isReset {
 	//	defer host.Client.AddConn()
 	//}
-	//if err = s.auth(r, c, host.Client.Cnf.U, host.Client.Cnf.P); err != nil {
+	//if err = s.auth(r, c, host.Client.Cnf.User, host.Client.Cnf.Passwd); err != nil {
 	//	logs.Warn("auth error", err, r.RemoteAddr)
 	//	return
 	//}

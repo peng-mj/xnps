@@ -1,14 +1,13 @@
-package file
+package database
 
 import (
 	"errors"
 	"fmt"
+	"github.com/astaxie/beego/logs"
 	"gorm.io/gorm"
-	"net/http"
+	"os"
 	"sort"
-	"strings"
 	"sync"
-	"xnps/lib/common"
 	"xnps/lib/crypt"
 	"xnps/lib/database/models"
 	"xnps/lib/rate"
@@ -19,21 +18,12 @@ type DbUtils struct {
 	JsonDb *JsonDb
 }
 
-var (
-	Db   *DbUtils
-	once sync.Once
-)
-
 // init csv from file
 func GetDb() *DbUtils {
-	once.Do(func() {
-		//jsonDb := NewJsonDb(common.GetRunPath())
-		//jsonDb.LoadClientFromJsonFile()
-		//jsonDb.LoadTaskFromJsonFile()
-		//jsonDb.LoadHostFromJsonFile()
-
-		Db = NewDb("conf/data.db")
-	})
+	if Db == nil {
+		logs.Info("数据库未打开")
+		os.Exit(-1)
+	}
 	return Db
 }
 
@@ -114,61 +104,6 @@ func (s *DbUtils) GetTask(id int) (t *models.Tunnel, err error) {
 	}
 	err = errors.New("not found")
 	return
-}
-
-func (s *DbUtils) DelHost(id int) error {
-	s.JsonDb.Hosts.Delete(id)
-	s.JsonDb.StoreHostToJsonFile()
-	return nil
-}
-
-func (s *DbUtils) IsHostExist(h *models.Host) bool {
-	var exist bool
-	s.JsonDb.Hosts.Range(func(key, value interface{}) bool {
-		v := value.(*models.Host)
-		if v.Id != h.Id && v.Host == h.Host && h.Location == v.Location && (v.Scheme == "all" || v.Scheme == h.Scheme) {
-			exist = true
-			return false
-		}
-		return true
-	})
-	return exist
-}
-
-func (s *DbUtils) NewHost(t *models.Host) error {
-	if t.Location == "" {
-		t.Location = "/"
-	}
-	if s.IsHostExist(t) {
-		return errors.New("host has exist")
-	}
-	t.Flow = new(models.Flow)
-	s.JsonDb.Hosts.Store(t.Id, t)
-	s.JsonDb.StoreHostToJsonFile()
-	return nil
-}
-
-func (s *DbUtils) GetHost(start, length int, id int, search string) ([]*models.Host, int) {
-	list := make([]*models.Host, 0)
-	var cnt int
-	keys := GetMapKeys(s.JsonDb.Hosts, false, "", "")
-	for _, key := range keys {
-		if value, ok := s.JsonDb.Hosts.Load(key); ok {
-			v := value.(*models.Host)
-			if search != "" && !(v.Id == common.GetIntNoErrByStr(search) || strings.Contains(v.Host, search) || strings.Contains(v.Remark, search) || strings.Contains(v.Client.VerifyKey, search)) {
-				continue
-			}
-			if id == 0 || v.Client.Id == id {
-				cnt++
-				if start--; start < 0 {
-					if length--; length >= 0 {
-						list = append(list, v)
-					}
-				}
-			}
-		}
-	}
-	return list, cnt
 }
 
 func (s *DbUtils) DelClient(id int) error {
@@ -278,59 +213,5 @@ func (s *DbUtils) GetClientIdByVkey(vkey string) (id int, err error) {
 		return
 	}
 	err = errors.New("未找到客户端")
-	return
-}
-
-func (s *DbUtils) GetHostById(id int) (h *models.Host, err error) {
-	if v, ok := s.JsonDb.Hosts.Load(id); ok {
-		h = v.(*models.Host)
-		return
-	}
-	err = errors.New("The host could not be parsed")
-	return
-}
-
-// get key by host from x
-func (s *DbUtils) GetInfoByHost(host string, r *http.Request) (h *models.Host, err error) {
-	var hosts []*models.Host
-	//Handling Ported Access
-	host = common.GetIpByAddr(host)
-	s.JsonDb.Hosts.Range(func(key, value interface{}) bool {
-		v := value.(*models.Host)
-		if v.IsClose {
-			return true
-		}
-		//Remove http(s) http(s)://a.proxy.com
-		//*.proxy.com *.a.proxy.com  Do some pan-parsing
-		if v.Scheme != "all" && v.Scheme != r.URL.Scheme {
-			return true
-		}
-		tmpHost := v.Host
-		if strings.Contains(tmpHost, "*") {
-			tmpHost = strings.Replace(tmpHost, "*", "", -1)
-			if strings.Contains(host, tmpHost) {
-				hosts = append(hosts, v)
-			}
-		} else if v.Host == host {
-			hosts = append(hosts, v)
-		}
-		return true
-	})
-
-	for _, v := range hosts {
-		//If not set, default matches all
-		if v.Location == "" {
-			v.Location = "/"
-		}
-		if strings.Index(r.RequestURI, v.Location) == 0 {
-			if h == nil || (len(v.Location) > len(h.Location)) {
-				h = v
-			}
-		}
-	}
-	if h != nil {
-		return
-	}
-	err = errors.New("The host could not be parsed")
 	return
 }

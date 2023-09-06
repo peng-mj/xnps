@@ -43,7 +43,7 @@ type flowConn struct {
 //		rw.Write([]byte(req.Host + " not found"))
 //		return
 //	}
-//	if host.Client.Cnf.U != "" && host.Client.Cnf.P != "" && !common.CheckAuth(req, host.Client.Cnf.U, host.Client.Cnf.P) {
+//	if host.Client.Cnf.User != "" && host.Client.Cnf.Passwd != "" && !common.CheckAuth(req, host.Client.Cnf.User, host.Client.Cnf.Passwd) {
 //		rw.WriteHeader(http.StatusUnauthorized)
 //		rw.Write([]byte("Unauthorized"))
 //		return

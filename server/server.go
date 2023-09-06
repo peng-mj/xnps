@@ -367,7 +367,7 @@ func DelClientConnect(clientId int) {
 func GetDashboardData() map[string]interface{} {
 	data := make(map[string]interface{})
 	data["version"] = version.VERSION
-	data["hostCount"] = common.GeSynctMapLen(file.GetDb().JsonDb.Hosts)
+	//data["hostCount"] = common.GeSynctMapLen(file.GetDb().JsonDb.Hosts)
 	data["clientCount"] = common.GeSynctMapLen(file.GetDb().JsonDb.Clients)
 	if beego.AppConfig.String("public_vkey") != "" { //remove public vkey
 		data["clientCount"] = data["clientCount"].(int) - 1
@@ -468,7 +468,7 @@ func flowSession(m time.Duration) {
 	for {
 		select {
 		case <-ticker.C:
-			file.GetDb().JsonDb.StoreHostToJsonFile()
+			//file.GetDb().JsonDb.StoreHostToJsonFile()
 			file.GetDb().JsonDb.StoreTasksToJsonFile()
 			file.GetDb().JsonDb.StoreClientsToJsonFile()
 		}

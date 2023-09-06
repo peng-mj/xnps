@@ -27,7 +27,6 @@ func GetDb() *DbUtils {
 		jsonDb := NewJsonDb(common.GetRunPath())
 		jsonDb.LoadClientFromJsonFile()
 		jsonDb.LoadTaskFromJsonFile()
-		//jsonDb.LoadHostFromJsonFile()
 		Db = &DbUtils{JsonDb: jsonDb}
 	})
 	return Db
@@ -102,7 +101,7 @@ func (s *DbUtils) NewTask(t *Tunnel) (err error) {
 	if err != nil {
 		return
 	}
-	t.Flow = new(Flow)
+	//t.Flow = new(Flow)
 	s.JsonDb.Tasks.Store(t.Id, t)
 	s.JsonDb.StoreTasksToJsonFile()
 	return
@@ -141,11 +140,11 @@ func (s *DbUtils) GetTask(id int) (t *Tunnel, err error) {
 	return
 }
 
-func (s *DbUtils) DelHost(id int) error {
-	s.JsonDb.Hosts.Delete(id)
-	s.JsonDb.StoreHostToJsonFile()
-	return nil
-}
+//func (s *DbUtils) DelHost(id int) error {
+//	s.JsonDb.Hosts.Delete(id)
+//	s.JsonDb.StoreHostToJsonFile()
+//	return nil
+//}
 
 //func (s *DbUtils) IsHostExist(h *Host) bool {
 //	var exist bool

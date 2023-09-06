@@ -49,14 +49,6 @@ func (s *BaseServer) FlowAdd(in, out int64) {
 	s.task.Flow.InletFlow += in
 }
 
-//change the flow
-//func (s *BaseServer) FlowAddHost(host *file.Host, in, out int64) {
-//	s.Lock()
-//	defer s.Unlock()
-//	host.Flow.ExportFlow += out
-//	host.Flow.InletFlow += in
-//}
-
 // write fail bytes to the connection
 func (s *BaseServer) writeConnFail(c net.Conn) {
 	c.Write([]byte(common.ConnectionFailBytes))

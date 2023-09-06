@@ -68,7 +68,7 @@ func GetWebManagerListener() (net.Listener, error) {
 		logs.Info("Web management start, access port is", bridgePort)
 		return pMux.GetManagerListener(), nil
 	}
-	logs.Info("web management start, access port is", webPort)
+	logs.Info("web management start, web url: http://localhost:" + webPort)
 	return getTcpListener(beego.AppConfig.String("web_ip"), webPort)
 }
 
@@ -81,5 +81,5 @@ func getTcpListener(ip, p string) (net.Listener, error) {
 	if ip == "" {
 		ip = "0.0.0.0"
 	}
-	return net.ListenTCP("tcp", &net.TCPAddr{net.ParseIP(ip), port, ""})
+	return net.ListenTCP("tcp", &net.TCPAddr{IP: net.ParseIP(ip), Port: port})
 }

@@ -54,13 +54,7 @@ func GetTaskStatus(path string) {
 		log.Fatalln(err)
 	} else {
 		arr := strings.Split(string(b), common.CONN_DATA_SEQ)
-		//for _, v := range cnf.Hosts {
-		//	if common.InStrArr(arr, v.Remark) {
-		//		log.Println(v.Remark, "ok")
-		//	} else {
-		//		log.Println(v.Remark, "not running")
-		//	}
-		//}
+
 		for _, v := range cnf.Tasks {
 			ports := common.GetPorts(v.Ports)
 			if v.Mode == "secret" {

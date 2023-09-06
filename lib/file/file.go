@@ -14,29 +14,29 @@ import (
 	"xnps/lib/rate"
 )
 
+var taskLock sync.Mutex
+var clientLock sync.Mutex
+
 func NewJsonDb(runPath string) *JsonDb {
 	return &JsonDb{
-		RunPath:        runPath,
-		TaskFilePath:   filepath.Join(runPath, "conf", "tasks.json"),
-		HostFilePath:   filepath.Join(runPath, "conf", "hosts.json"),
+		RunPath:      runPath,
+		TaskFilePath: filepath.Join(runPath, "conf", "tasks.json"),
+		//HostFilePath:   filepath.Join(runPath, "conf", "hosts.json"),
 		ClientFilePath: filepath.Join(runPath, "conf", "clients.json"),
 	}
 }
 
 type JsonDb struct {
 	Tasks            sync.Map
-	Hosts            sync.Map
-	HostsTmp         sync.Map
 	Clients          sync.Map
 	RunPath          string
 	ClientIncreaseId int32  //client increased id
 	TaskIncreaseId   int32  //task increased id
-	HostIncreaseId   int32  //host increased id
 	TaskFilePath     string //task file path
-	HostFilePath     string //host file path
 	ClientFilePath   string //client file path
 }
 
+// 隧道管理
 func (s *JsonDb) LoadTaskFromJsonFile() {
 	loadSyncMapFromFile(s.TaskFilePath, func(v string) {
 		var err error
@@ -44,7 +44,7 @@ func (s *JsonDb) LoadTaskFromJsonFile() {
 		if json.Unmarshal([]byte(v), &post) != nil {
 			return
 		}
-		if post.Client, err = s.GetClient(post.Client.Id); err != nil {
+		if post.Client, err = s.GetClientById(post.Client.Id); err != nil {
 			return
 		}
 		s.Tasks.Store(post.Id, post)
@@ -54,6 +54,7 @@ func (s *JsonDb) LoadTaskFromJsonFile() {
 	})
 }
 
+// 获取客户端列表
 func (s *JsonDb) LoadClientFromJsonFile() {
 	loadSyncMapFromFile(s.ClientFilePath, func(v string) {
 		post := new(Client)
@@ -74,24 +75,8 @@ func (s *JsonDb) LoadClientFromJsonFile() {
 	})
 }
 
-//func (s *JsonDb) LoadHostFromJsonFile() {
-//	loadSyncMapFromFile(s.HostFilePath, func(v string) {
-//		var err error
-//		post := new(Host)
-//		if json.Unmarshal([]byte(v), &post) != nil {
-//			return
-//		}
-//		if post.Client, err = s.GetClient(post.Client.Id); err != nil {
-//			return
-//		}
-//		s.Hosts.Store(post.Id, post)
-//		if post.Id > int(s.HostIncreaseId) {
-//			s.HostIncreaseId = int32(post.Id)
-//		}
-//	})
-//}
-
-func (s *JsonDb) GetClient(id int) (c *Client, err error) {
+// 通过id获取客户端
+func (s *JsonDb) GetClientById(id int) (c *Client, err error) {
 	if v, ok := s.Clients.Load(id); ok {
 		c = v.(*Client)
 		return
@@ -100,23 +85,12 @@ func (s *JsonDb) GetClient(id int) (c *Client, err error) {
 	return
 }
 
-var hostLock sync.Mutex
-
-func (s *JsonDb) StoreHostToJsonFile() {
-	hostLock.Lock()
-	storeSyncMapToFile(s.Hosts, s.HostFilePath)
-	hostLock.Unlock()
-}
-
-var taskLock sync.Mutex
-
+// 存储隧道任务
 func (s *JsonDb) StoreTasksToJsonFile() {
 	taskLock.Lock()
 	storeSyncMapToFile(s.Tasks, s.TaskFilePath)
 	taskLock.Unlock()
 }
-
-var clientLock sync.Mutex
 
 func (s *JsonDb) StoreClientsToJsonFile() {
 	clientLock.Lock()
@@ -128,13 +102,14 @@ func (s *JsonDb) GetClientId() int32 {
 	return atomic.AddInt32(&s.ClientIncreaseId, 1)
 }
 
+// 获取下一个新的task id
 func (s *JsonDb) GetTaskId() int32 {
 	return atomic.AddInt32(&s.TaskIncreaseId, 1)
 }
 
-func (s *JsonDb) GetHostId() int32 {
-	return atomic.AddInt32(&s.HostIncreaseId, 1)
-}
+//func (s *JsonDb) GetHostId() int32 {
+//	return atomic.AddInt32(&s.HostIncreaseId, 1)
+//}
 
 func loadSyncMapFromFile(filePath string, f func(value string)) {
 	b, err := common.ReadAllFromFile(filePath)
@@ -146,6 +121,7 @@ func loadSyncMapFromFile(filePath string, f func(value string)) {
 	}
 }
 
+// 存储临时任务
 func storeSyncMapToFile(m sync.Map, filePath string) {
 	file, err := os.Create(filePath + ".tmp")
 	// first create a temporary file to store
@@ -162,12 +138,6 @@ func storeSyncMapToFile(m sync.Map, filePath string) {
 				return true
 			}
 			b, err = json.Marshal(obj)
-		//case *Host:
-		//	obj := value.(*Host)
-		//	if obj.NoStore {
-		//		return true
-		//	}
-		//	b, err = json.Marshal(obj)
 		case *Client:
 			obj := value.(*Client)
 			if obj.NoStore {

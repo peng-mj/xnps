@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
+	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/logs"
 	"io"
 	"net"
@@ -197,15 +198,6 @@ func (s *Conn) GetHealthInfo() (info string, status bool, err error) {
 	return "", false, errors.New("receive health info error")
 }
 
-//// get task info
-//func (s *Conn) GetHostInfo() (h *file.Host, err error) {
-//	err = s.getInfo(&h)
-//	h.Id = int(file.GetDb().JsonDb.GetHostId())
-//	h.Flow = new(file.Flow)
-//	h.NoStore = true
-//	return
-//}
-
 // get task info
 func (s *Conn) GetConfigInfo() (c *file.Client, err error) {
 	err = s.getInfo(&c)
@@ -220,10 +212,16 @@ func (s *Conn) GetConfigInfo() (c *file.Client, err error) {
 
 // get task info
 func (s *Conn) GetTaskInfo() (t *file.Tunnel, err error) {
+	//t = new(file.Tunnel)
 	err = s.getInfo(&t)
 	t.Id = int(file.GetDb().JsonDb.GetTaskId())
 	t.NoStore = true
 	t.Flow = new(file.Flow)
+	t.Target = new(file.Target)
+	t.Target.TargetStr = beego.AppConfig.String("allow_ports")
+	if len(t.Target.TargetStr) < 2 {
+		t.Target.TargetStr = "81-65535"
+	}
 	return
 }
 
@@ -378,24 +376,10 @@ func CopyWaitGroup(conn1, conn2 net.Conn, encrypt bool, snappy bool, rate *rate.
 	//var in, out int64
 	//var wg sync.WaitGroup
 	connHandle := GetConn(conn1, encrypt, snappy, rate, isServer)
-	//这个是什么意思？
 	if rb != nil {
 		connHandle.Write(rb)
 	}
-	//go func(in *int64) {
-	//	wg.Add(1)
-	//	*in, _ = common.CopyBuffer(connHandle, conn2)
-	//	connHandle.Close()
-	//	conn2.Close()
-	//	wg.Done()
-	//}(&in)
-	//out, _ = common.CopyBuffer(conn2, connHandle)
-	//connHandle.Close()
-	//conn2.Close()
-	//wg.Wait()
-	//if flow != nil {
-	//	flow.Add(in, out)
-	//}
+
 	wg := new(sync.WaitGroup)
 	wg.Add(1)
 	err := goroutine.CopyConnsPool.Invoke(goroutine.NewConns(connHandle, conn2, flow, wg, task))
