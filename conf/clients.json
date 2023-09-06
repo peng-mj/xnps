@@ -1,2 +1,0 @@
-{"Cnf":{"User":"","Passwd":"","Compress":false,"Crypt":false},"Id":2,"VerifyKey":"2c02edab8c36102607f7a2a87ee1e8f0e0d74d2225ee90220086ffd81a41bd40","Addr":"127.0.0.1","Remark":"","Status":true,"IsConnect":true,"RateLimit":0,"Flow":{"ExportFlow":1292,"InletFlow":1292,"FlowLimit":0},"Rate":{"NowRate":0},"NoStore":false,"NoDisplay":false,"MaxConn":0,"NowConn":0,"WebUserName":"","WebPassword":"","ConfigConnAllow":true,"MaxTunnelNum":0,"Version":"0.26.14","BlackIpList":[""]}
-*#*

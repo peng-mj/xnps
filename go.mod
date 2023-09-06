@@ -8,6 +8,7 @@ require (
 	github.com/ccding/go-stun v0.0.0-20180726100737-be486d185f3d
 	github.com/golang/snappy v0.0.3
 	github.com/kardianos/service v1.2.0
+	github.com/oklog/ulid/v2 v2.1.0
 	github.com/panjf2000/ants/v2 v2.4.2
 	github.com/pkg/errors v0.9.1
 	github.com/shirou/gopsutil/v3 v3.21.3
