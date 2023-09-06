@@ -7,10 +7,11 @@ import (
 	"net"
 	"sync"
 	"time"
+	"xnps/lib/database/models"
 
 	"github.com/astaxie/beego"
 	"xnps/lib/common"
-	"xnps/lib/file"
+	"xnps/lib/database"
 	"xnps/server"
 )
 
@@ -84,25 +85,25 @@ func (self *LoginController) doLogin(username, password string, explicit bool) b
 	}
 	b, err := beego.AppConfig.Bool("allow_user_login")
 	if err == nil && b && !auth {
-		file.GetDb().JsonDb.Clients.Range(func(key, value interface{}) bool {
-			v := value.(*file.Client)
-			if !v.Status || v.NoDisplay {
+		database.GetDb().JsonDb.Clients.Range(func(key, value interface{}) bool {
+			v := value.(*models.Client)
+			if !v.Status || v.Valid {
 				return true
 			}
-			if v.WebUserName == "" && v.WebPassword == "" {
+			if v.WebUser == "" && v.WebPasswd == "" {
 				if username != "user" || v.VerifyKey != password {
 					return true
 				} else {
 					auth = true
 				}
 			}
-			if !auth && v.WebPassword == password && v.WebUserName == username {
+			if !auth && v.WebUser == password && v.WebPasswd == username {
 				auth = true
 			}
 			if auth {
 				self.SetSession("isAdmin", false)
 				self.SetSession("clientId", v.Id)
-				self.SetSession("username", v.WebUserName)
+				self.SetSession("username", v.WebUser)
 				return false
 			}
 			return true
@@ -137,15 +138,15 @@ func (self *LoginController) Register() {
 			self.ServeJSON()
 			return
 		}
-		t := &file.Client{
-			Id:          int(file.GetDb().JsonDb.GetClientId()),
-			Status:      true,
-			Cnf:         &file.Config{},
-			WebUserName: self.GetString("username"),
-			WebPassword: self.GetString("password"),
-			Flow:        &file.Flow{},
+		t := &models.Client{
+			Id:        database.GetDb().JsonDb.GetClientId(),
+			Status:    true,
+			Cnf:       &models.Config{},
+			WebUser:   self.GetString("username"),
+			WebPasswd: self.GetString("password"),
+			Flow:      &models.Flow{},
 		}
-		if err := file.GetDb().NewClient(t); err != nil {
+		if err := database.GetDb().NewClient(t); err != nil {
 			self.Data["json"] = map[string]interface{}{"status": 0, "msg": err.Error()}
 		} else {
 			self.Data["json"] = map[string]interface{}{"status": 1, "msg": "register success"}

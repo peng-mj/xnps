@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"xnps/lib/database/models"
 
 	"xnps/lib/common"
-	"xnps/lib/file"
+	"xnps/lib/database"
 )
 
 type CommonConfig struct {
@@ -16,7 +17,7 @@ type CommonConfig struct {
 	Tp               string //bridgeType kcp or tcp
 	AutoReconnection bool
 	ProxyUrl         string
-	Client           *file.Client
+	Client           *models.Client
 	DisconnectTime   int
 }
 
@@ -33,7 +34,7 @@ type Config struct {
 	title        []string
 	CommonConfig *CommonConfig
 	//Hosts        []*file.Host
-	Tasks []*file.Tunnel
+	Tasks []*models.Tunnel
 	//Healths     []*file.Health
 	LocalServer []*LocalServer
 }
@@ -106,8 +107,8 @@ func getTitleContent(s string) string {
 
 func dealCommon(s string) *CommonConfig {
 	c := &CommonConfig{}
-	c.Client = file.NewClient("", true, true)
-	c.Client.Cnf = new(file.Config)
+	c.Client = database.NewClient("", true, true)
+	c.Client.Cnf = new(models.Config)
 	for _, v := range splitStr(s) {
 		item := strings.Split(v, "=")
 		if len(item) == 0 {
@@ -129,9 +130,9 @@ func dealCommon(s string) *CommonConfig {
 		case "basic_password":
 			c.Client.Cnf.Passwd = item[1]
 		case "web_password":
-			c.Client.WebPassword = item[1]
+			c.Client.WebPasswd = item[1]
 		case "web_username":
-			c.Client.WebUserName = item[1]
+			c.Client.WebUser = item[1]
 		case "compress":
 			c.Client.Cnf.Compress = common.GetBoolByStr(item[1])
 		case "crypt":
@@ -216,9 +217,9 @@ func dealCommon(s string) *CommonConfig {
 //	return h
 //}
 
-func dealTunnel(s string) *file.Tunnel {
-	t := &file.Tunnel{}
-	t.Target = new(file.Target)
+func dealTunnel(s string) *models.Tunnel {
+	t := &models.Tunnel{}
+	t.Target = new(models.Target)
 	for _, v := range splitStr(s) {
 		item := strings.Split(v, "=")
 		if len(item) == 0 {

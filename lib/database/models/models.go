@@ -5,7 +5,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-	"xnps/lib/file"
+	"xnps/lib/database"
 
 	"github.com/pkg/errors"
 	"xnps/lib/rate"
@@ -26,63 +26,39 @@ func (s *Flow) Add(in, out int64) {
 }
 
 type Config struct {
-	U        string //web的用户名
-	P        string //web的密码
+	User     string //web的用户名
+	Passwd   string //web的密码
 	Compress bool
 	Crypt    bool
 }
 
 type Client struct {
-	Id              int64      `gorm:"column:id;type:int;auto_increment;not null;primaryKey;" json:"Id"`
-	VerifyKey       string     `gorm:"column:verify_key;type:text;not null" json:"VerifyKey"`
-	Addr            string     `gorm:"column:addr;type:text;not null;default: " json:"Addr"`
-	Remark          string     `gorm:"column:remark;type:text;not null;default: " json:"Remark"`
-	Valid           bool       `gorm:"column:valid;type:integer;default:0;not null" json:"Valid"`
-	Connected       bool       `gorm:"column:connected;type:integer;default:0;not null" json:"Connected"`
-	RateLimit       int        `gorm:"column:rate_limit;type:integer;default:0;not null" json:"RateLimit"`
-	FlowExport      float32    `gorm:"column:flow_export;type:real;not null;default:0" json:"FlowExport"`
-	FlowInle        float32    `gorm:"column:flow_inle;type:real;not null;default:0" json:"FlowInle"`
-	NowRate         float32    `gorm:"column:now_rate;type:real;default:0;not null" json:"NowRate"`
-	MaxConn         int32      `gorm:"column:max_conn;type:integer;default:100;not null" json:"MaxConn"`
-	NowConn         int32      `gorm:"column:now_conn;type:integer;default:0;not null" json:"NowConn"`
-	WebUser         string     `gorm:"column:web_user;type:text;not null;default:user" json:"WebUser"`
-	WebPasswd       string     `gorm:"column:web_passwd;type:text;not null;default:123" json:"WebPasswd"`
-	AllowFileConfig bool       `gorm:"column:allow_file_config;type:integer;default:1;not null" json:"AllowFileConfig"`
-	MaxTunnelNum    int        `gorm:"column:max_tunnel_num;type:integer;default:100;not null" json:"MaxTunnelNum"`
-	Version         string     `gorm:"column:version;type:text;default:Null;not null" json:"Version"`
-	BlackId         int        `gorm:"column:black_id;type:integer;default:0;not null" json:"BlackId"`
-	Flow            *Flow      `json:"-"`
-	Rate            *rate.Rate `json:"-"`
+	Id                 int64      `gorm:"column:id;type:int;auto_increment;not null;primaryKey;" json:"Id"`
+	VerifyKey          string     `gorm:"column:verify_key;type:text;not null" json:"VerifyKey"`
+	Addr               string     `gorm:"column:addr;type:text;not null;default: " json:"Addr"`
+	Remark             string     `gorm:"column:remark;type:text;not null;default: " json:"Remark"`
+	Valid              bool       `gorm:"column:valid;type:integer;default:0;not null" json:"Valid"`
+	Connected          bool       `gorm:"column:connected;type:integer;default:0;not null" json:"Connected"`
+	RateLimit          int        `gorm:"column:rate_limit;type:integer;default:0;not null" json:"RateLimit"`
+	FlowExport         float32    `gorm:"column:flow_export;type:real;not null;default:0" json:"FlowExport"`
+	FlowInle           float32    `gorm:"column:flow_inle;type:real;not null;default:0" json:"FlowInle"`
+	NowRate            float32    `gorm:"column:now_rate;type:real;default:0;not null" json:"NowRate"`
+	MaxConn            int32      `gorm:"column:max_conn;type:integer;default:100;not null" json:"MaxConn"`
+	NowConn            int32      `gorm:"column:now_conn;type:integer;default:0;not null" json:"NowConn"`
+	WebUser            string     `gorm:"column:web_user;type:text;not null;default:user" json:"WebUser"`
+	WebPasswd          string     `gorm:"column:web_passwd;type:text;not null;default:123" json:"WebPasswd"`
+	AllowUseConfigFile bool       `gorm:"column:allow_file_config;type:integer;default:1;not null" json:"AllowUseConfigFile"`
+	MaxTunnelNum       int        `gorm:"column:max_tunnel_num;type:integer;default:100;not null" json:"MaxTunnelNum"`
+	Version            string     `gorm:"column:version;type:text;default:Null;not null" json:"Version"`
+	BlackId            int        `gorm:"column:black_id;type:integer;default:0;not null" json:"BlackId"`
+	Flow               *Flow      `gorm:"-" json:"-"`
+	Rate               *rate.Rate `gorm:"-" json:"-"`
 	sync.RWMutex
 }
 
 func (*Client) TableName() string {
 	return "client"
 }
-
-//type Client struct {
-//	//Cnf             *Config
-//	Id              int        //id
-//	VerifyKey       string     //verify key
-//	Addr            string     //the ip of client
-//	Remark          string     //remark
-//	Status          bool       //is allow connect
-//	IsConnect       bool       //is the client connect
-//	RateLimit       int        //rate /kb
-//	Flow            *Flow      //flow setting
-//	Rate            *rate.Rate //rate limit
-//	NoStore         bool       //no store to file
-//	NoDisplay       bool       //no display on web
-//	MaxConn         int        //the max connection num of client allow
-//	NowConn         int32      //the connection num of now
-//	WebUserName     string     //the username of web login
-//	WebPassword     string     //the password of web login
-//	ConfigConnAllow bool       //is allow connected by config file
-//	MaxTunnelNum    int
-//	Version         string
-//	BlackIpList     []string
-//	sync.RWMutex
-//}
 
 func (s *Client) CutConn() {
 	atomic.AddInt32(&s.NowConn, 1)
@@ -101,7 +77,8 @@ func (s *Client) GetConn() bool {
 }
 
 func (s *Client) HasTunnel(t *Tunnel) (exist bool) {
-	file.GetDb().JsonDb.Tasks.Range(func(key, value interface{}) bool {
+
+	database.GetDb().JsonDb.Tasks.Range(func(key, value interface{}) bool {
 		v := value.(*Tunnel)
 		if v.Client.Id == s.Id && v.Port == t.Port && t.Port != 0 {
 			exist = true
@@ -112,8 +89,9 @@ func (s *Client) HasTunnel(t *Tunnel) (exist bool) {
 	return
 }
 
+// 获取隧道数量
 func (s *Client) GetTunnelNum() (num int) {
-	file.GetDb().JsonDb.Tasks.Range(func(key, value interface{}) bool {
+	database.GetDb().JsonDb.Tasks.Range(func(key, value interface{}) bool {
 		v := value.(*Tunnel)
 		if v.Client.Id == s.Id {
 			num++
@@ -143,7 +121,7 @@ type Tunnel struct {
 	StripPre     string        `gorm:"column:strip_pre;type:text;not null;default:" json:"StripPre"`
 	Target       *Target       `gorm:"-" json:"-"`
 	MultiAccount *MultiAccount `gorm:"-" json:"-"`
-	Health       `gorm:"-" json:"-"`
+	//Health       `gorm:"-" json:"-"`
 	sync.RWMutex `gorm:"-" json:"-"`
 }
 
@@ -175,7 +153,7 @@ type Host struct {
 	Flow         *Flow
 	Client       *Client
 	Target       *Target //目标
-	Health       `json:"-"`
+	//Health       `json:"-"`
 	sync.RWMutex
 }
 

@@ -6,13 +6,13 @@ import (
 	"net/http"
 	"path/filepath"
 	"strconv"
+	"xnps/lib/database/models"
 
 	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/logs"
 	"xnps/bridge"
 	"xnps/lib/common"
 	"xnps/lib/conn"
-	"xnps/lib/file"
 	"xnps/server/connection"
 )
 
@@ -23,7 +23,7 @@ type TunnelModeServer struct {
 }
 
 // tcp|http|host
-func NewTunnelModeServer(process process, bridge NetBridge, task *file.Tunnel) *TunnelModeServer {
+func NewTunnelModeServer(process process, bridge NetBridge, task *models.Tunnel) *TunnelModeServer {
 	s := new(TunnelModeServer)
 	s.bridge = bridge
 	s.process = process

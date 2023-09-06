@@ -285,6 +285,7 @@ func in(target string, str_array []string) bool {
 	return false
 }
 
+// TODO:重构，增加防火墙功能
 // 判断访问地址是否在黑名单内
 func IsBlackIp(ipPort, vkey string, blackIpList []string) bool {
 	ip := GetIpByAddr(ipPort)

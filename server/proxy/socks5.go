@@ -6,11 +6,11 @@ import (
 	"io"
 	"net"
 	"strconv"
+	"xnps/lib/database/models"
 
 	"github.com/astaxie/beego/logs"
 	"xnps/lib/common"
 	"xnps/lib/conn"
-	"xnps/lib/file"
 )
 
 const (
@@ -385,7 +385,7 @@ func (s *Sock5ModeServer) Start() error {
 }
 
 // new
-func NewSock5ModeServer(bridge NetBridge, task *file.Tunnel) *Sock5ModeServer {
+func NewSock5ModeServer(bridge NetBridge, task *models.Tunnel) *Sock5ModeServer {
 	s := new(Sock5ModeServer)
 	s.bridge = bridge
 	s.task = task

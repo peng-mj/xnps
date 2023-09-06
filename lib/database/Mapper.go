@@ -15,8 +15,8 @@ import (
 )
 
 type DbUtils struct {
-	GDb    *gorm.DB
-	JsonDb *JsonDb
+	GDb *gorm.DB
+	//JsonDb *JsonDb
 }
 
 func (s *DbUtils) CheckVKey(vKey string) bool {
@@ -107,9 +107,11 @@ func (s *DbUtils) DelTask(id int64) error {
 	return nil
 }
 
-// TODO:后期修改为sha验证
+// TODO:使用gorm造成不能遍历密码，从而验证密钥正确性，需要修改，所以，后期存储密钥直接存储加密后的值
 // md5 password
-func (s *DbUtils) GetTaskByMd5Password(p string) (t *models.Tunnel) {
+func (s *DbUtils) GetTaskByMd5Password(p string) (tunnel *models.Tunnel) {
+	//var tunnel models.Tunnel
+	s.GDb.Model(models.Tunnel{}).Where("passwd = ?", p).First(tunnel)
 	s.JsonDb.Tasks.Range(func(key, value interface{}) bool {
 		if crypt.Md5(value.(*models.Tunnel).Password) == p {
 			t = value.(*models.Tunnel)
@@ -188,11 +190,11 @@ func (s *DbUtils) UpdateClient(t *models.Client) error {
 }
 
 // 检查是否启用
-func (s *DbUtils) IsPubClient(id int) bool {
+func (s *DbUtils) IsPubClient(id int64) bool {
 	return s.GDb.Model(models.Client{}).Where("id = ? and valid = 1", id).First(new(models.Client)).RowsAffected > 0
 }
 
-func (s *DbUtils) GetClient(id int) (c *models.Client, err error) {
+func (s *DbUtils) GetClient(id int64) (c *models.Client, err error) {
 	if s.GDb.Model(models.Client{}).Where("id = ? and valid = 1", id).First(c).RowsAffected < 1 {
 		err = errors.New("未找到客户端")
 	}
@@ -206,4 +208,16 @@ func (s *DbUtils) GetClientIdByVkey(vkey string) (id int64, err error) {
 	}
 	return
 
+}
+func (s *DbUtils) HasTunnel(clientId int64, t *models.Tunnel) bool {
+	var num int64
+	s.GDb.Model(models.Tunnel{}).Where("client_id = ?", clientId).Where(t).Count(&num)
+	return num > 0
+	//return s.GDb.Model(models.Tunnel{}).Where("client_id = ?", clientId).Where(t).First(new(models.Tunnel)).RowsAffected > 0
+}
+
+func (s *DbUtils) GetClientTunnelNumByClientId(id int64) int {
+	var num int64
+	s.GDb.Model(models.Tunnel{}).Where("client_id = ?", id).Count(&num)
+	return int(num)
 }

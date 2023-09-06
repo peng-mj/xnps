@@ -8,7 +8,7 @@ import (
 	"strings"
 	"sync"
 	"xnps/lib/common"
-	"xnps/lib/file"
+	"xnps/lib/database/models"
 )
 
 type connGroup struct {
@@ -16,12 +16,12 @@ type connGroup struct {
 	dst    io.ReadWriteCloser
 	wg     *sync.WaitGroup
 	n      *int64
-	flow   *file.Flow
-	task   *file.Tunnel
+	flow   *models.Flow
+	task   *models.Tunnel
 	remote string
 }
 
-func newConnGroup(dst, src io.ReadWriteCloser, wg *sync.WaitGroup, n *int64, flow *file.Flow, task *file.Tunnel, remote string) connGroup {
+func newConnGroup(dst, src io.ReadWriteCloser, wg *sync.WaitGroup, n *int64, flow *models.Flow, task *models.Tunnel, remote string) connGroup {
 	return connGroup{
 		src:    src,
 		dst:    dst,
@@ -33,7 +33,7 @@ func newConnGroup(dst, src io.ReadWriteCloser, wg *sync.WaitGroup, n *int64, flo
 	}
 }
 
-func CopyBuffer(dst io.Writer, src io.Reader, flow *file.Flow, task *file.Tunnel, remote string) (err error) {
+func CopyBuffer(dst io.Writer, src io.Reader, flow *models.Flow, task *models.Tunnel, remote string) (err error) {
 	buf := common.CopyBuff.Get()
 	defer common.CopyBuff.Put(buf)
 	for {
@@ -119,12 +119,12 @@ func copyConnGroup(group interface{}) {
 type Conns struct {
 	conn1 io.ReadWriteCloser // mux connection
 	conn2 net.Conn           // outside connection
-	flow  *file.Flow
+	flow  *models.Flow
 	wg    *sync.WaitGroup
-	task  *file.Tunnel
+	task  *models.Tunnel
 }
 
-func NewConns(c1 io.ReadWriteCloser, c2 net.Conn, flow *file.Flow, wg *sync.WaitGroup, task *file.Tunnel) Conns {
+func NewConns(c1 io.ReadWriteCloser, c2 net.Conn, flow *models.Flow, wg *sync.WaitGroup, task *models.Tunnel) Conns {
 	return Conns{
 		conn1: c1,
 		conn2: c2,

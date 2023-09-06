@@ -10,8 +10,8 @@ import (
 	"strings"
 	"sync"
 	"xnps/lib/daemon"
+	"xnps/lib/database/models"
 
-	"xnps/lib/file"
 	"xnps/lib/install"
 	"xnps/lib/version"
 	"xnps/server"
@@ -217,7 +217,7 @@ func (p *nps) run() error {
 
 func run() {
 	routers.Init()
-	task := &file.Tunnel{
+	task := &models.Tunnel{
 		Mode: "webServer",
 	}
 	bridgePort, err := beego.AppConfig.Int("bridge_port")

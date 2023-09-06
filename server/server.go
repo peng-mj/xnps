@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"xnps/lib/database/models"
 	"xnps/lib/version"
 
 	"github.com/astaxie/beego"
@@ -18,7 +19,7 @@ import (
 	"github.com/shirou/gopsutil/v3/net"
 	"xnps/bridge"
 	"xnps/lib/common"
-	"xnps/lib/file"
+	"xnps/lib/database"
 	"xnps/server/proxy"
 	"xnps/server/tool"
 )
@@ -36,15 +37,15 @@ func init() {
 func InitFromCsv() {
 	//Add a public password
 	if vkey := beego.AppConfig.String("public_vkey"); vkey != "" {
-		c := file.NewClient(vkey, true, true)
-		file.GetDb().NewClient(c)
+		c := database.NewClient(vkey, true, true)
+		database.GetDb().NewClient(c)
 		RunList.Store(c.Id, nil)
 		//RunList[c.Id] = nil
 	}
 	//Initialize services in server-side files
-	file.GetDb().JsonDb.Tasks.Range(func(key, value interface{}) bool {
-		if value.(*file.Tunnel).Status {
-			AddTask(value.(*file.Tunnel))
+	database.GetDb().JsonDb.Tasks.Range(func(key, value interface{}) bool {
+		if value.(*models.Tunnel).Status {
+			AddTask(value.(*models.Tunnel))
 		}
 		return true
 	})
@@ -60,16 +61,16 @@ func DealBridgeTask() {
 			StopServer(t.Id)
 		case id := <-Bridge.CloseClient:
 			//DelTunnelAndHostByClientId(id, true)
-			if v, ok := file.GetDb().JsonDb.Clients.Load(id); ok {
-				if v.(*file.Client).NoStore {
-					file.GetDb().DelClient(id)
+			if v, ok := database.GetDb().JsonDb.Clients.Load(id); ok {
+				if v.(*models.Client).Valid {
+					database.GetDb().DelClient(id)
 				}
 			}
 		case tunnel := <-Bridge.OpenTask:
 			StartTask(tunnel.Id)
 		case s := <-Bridge.SecretChan:
 			logs.Trace("New secret connection, addr", s.Conn.Conn.RemoteAddr())
-			if t := file.GetDb().GetTaskByMd5Password(s.Password); t != nil {
+			if t := database.GetDb().GetTaskByMd5Password(s.Password); t != nil {
 				if t.Status {
 					go proxy.NewBaseServer(Bridge, t).DealClient(s.Conn, t.Client, t.Target.TargetStr, nil, common.CONN_TCP, nil, t.Flow, t.Target.LocalProxy, nil)
 				} else {
@@ -85,7 +86,7 @@ func DealBridgeTask() {
 }
 
 // start a new server
-func StartNewServer(bridgePort int, cnf *file.Tunnel, bridgeType string, timeout int) {
+func StartNewServer(bridgePort int, cnf *models.Tunnel, bridgeType string, timeout int) {
 	Bridge = bridge.NewTunnel(bridgePort, bridgeType, common.GetBoolByStr(beego.AppConfig.String("ip_limit")), RunList, timeout)
 	go func() {
 		if err := Bridge.StartTunnel(); err != nil {
@@ -124,7 +125,7 @@ func dealClientFlow() {
 }
 
 // new a server by mode name
-func NewMode(Bridge *bridge.Bridge, c *file.Tunnel) proxy.Service {
+func NewMode(Bridge *bridge.Bridge, c *models.Tunnel) proxy.Service {
 	var service proxy.Service
 	switch c.Mode {
 	case "tcp", "file":
@@ -139,7 +140,7 @@ func NewMode(Bridge *bridge.Bridge, c *file.Tunnel) proxy.Service {
 		service = proxy.NewUdpModeServer(Bridge, c)
 	case "webServer":
 		InitFromCsv()
-		t := &file.Tunnel{
+		t := &models.Tunnel{
 			Port:   0,
 			Mode:   "httpHostServer",
 			Status: true,
@@ -158,7 +159,7 @@ func NewMode(Bridge *bridge.Bridge, c *file.Tunnel) proxy.Service {
 }
 
 // stop server
-func StopServer(id int) error {
+func StopServer(id int64) error {
 	//if v, ok := RunList[id]; ok {
 	if v, ok := RunList.Load(id); ok {
 		if svr, ok := v.(proxy.Service); ok {
@@ -169,12 +170,12 @@ func StopServer(id int) error {
 		} else {
 			logs.Warn("stop server id %d error", id)
 		}
-		if t, err := file.GetDb().GetTask(id); err != nil {
+		if t, err := database.GetDb().GetTaskById(id); err != nil {
 			return err
 		} else {
 			t.Status = false
 			logs.Info("close port %d,remark %s,client id %d,task id %d", t.Port, t.Remark, t.Client.Id, t.Id)
-			file.GetDb().UpdateTask(t)
+			database.GetDb().UpdateTask(t)
 		}
 		//delete(RunList, id)
 		RunList.Delete(id)
@@ -184,7 +185,7 @@ func StopServer(id int) error {
 }
 
 // add task
-func AddTask(t *file.Tunnel) error {
+func AddTask(t *models.Tunnel) error {
 	if t.Mode == "secret" || t.Mode == "p2p" {
 		logs.Info("secret task %s start ", t.Remark)
 		//RunList[t.Id] = nil
@@ -217,47 +218,47 @@ func AddTask(t *file.Tunnel) error {
 }
 
 // start task
-func StartTask(id int) error {
-	if t, err := file.GetDb().GetTask(id); err != nil {
+func StartTask(id int64) error {
+	if t, err := database.GetDb().GetTaskById(id); err != nil {
 		return err
 	} else {
 		AddTask(t)
 		t.Status = true
-		file.GetDb().UpdateTask(t)
+		database.GetDb().UpdateTask(t)
 	}
 	return nil
 }
 
 // delete task
-func DelTask(id int) error {
+func DelTask(id int64) error {
 	//if _, ok := RunList[id]; ok {
 	if _, ok := RunList.Load(id); ok {
 		if err := StopServer(id); err != nil {
 			return err
 		}
 	}
-	return file.GetDb().DelTask(id)
+	return database.GetDb().DelTask(id)
 }
 
 // get task list by page num
-func GetTunnel(start, length int, typeVal string, clientId int, search string) ([]*file.Tunnel, int) {
-	list := make([]*file.Tunnel, 0)
+func GetTunnel(start, length int, typeVal string, clientId int64, search string) ([]*models.Tunnel, int) {
+	list := make([]*models.Tunnel, 0)
 	var cnt int
-	keys := file.GetMapKeys(file.GetDb().JsonDb.Tasks, false, "", "")
+	keys := database.GetMapKeys(database.GetDb().JsonDb.Tasks, false, "", "")
 	for _, key := range keys {
-		if value, ok := file.GetDb().JsonDb.Tasks.Load(key); ok {
-			v := value.(*file.Tunnel)
+		if value, ok := database.GetDb().JsonDb.Tasks.Load(key); ok {
+			v := value.(*models.Tunnel)
 			if (typeVal != "" && v.Mode != typeVal || (clientId != 0 && v.Client.Id != clientId)) || (typeVal == "" && clientId != v.Client.Id) {
 				continue
 			}
-			if search != "" && !(v.Id == common.GetIntNoErrByStr(search) || v.Port == common.GetIntNoErrByStr(search) || strings.Contains(v.Password, search) || strings.Contains(v.Remark, search) || strings.Contains(v.Client.VerifyKey, search)) {
+			if search != "" && !(v.Id == int64(common.GetIntNoErrByStr(search)) || v.Port == common.GetIntNoErrByStr(search) || strings.Contains(v.Password, search) || strings.Contains(v.Remark, search) || strings.Contains(v.Client.VerifyKey, search)) {
 				continue
 			}
 			cnt++
 			if _, ok := Bridge.Client.Load(v.Client.Id); ok {
-				v.Client.IsConnect = true
+				v.Client.Connected = true
 			} else {
-				v.Client.IsConnect = false
+				v.Client.Connected = false
 			}
 			if start--; start < 0 {
 				if length--; length >= 0 {
@@ -276,8 +277,8 @@ func GetTunnel(start, length int, typeVal string, clientId int, search string) (
 }
 
 // get client list
-func GetClientList(start, length int, search, sort, order string, clientId int) (list []*file.Client, cnt int) {
-	list, cnt = file.GetDb().GetClientList(start, length, search, sort, order, clientId)
+func GetClientList(start, length int, search, sort, order string, clientId int) (list []models.Client, cnt int) {
+	list, cnt = database.GetDb().GetClientList(start, length, search, sort, order, clientId)
 	dealClientData()
 	return
 }
@@ -285,13 +286,13 @@ func GetClientList(start, length int, search, sort, order string, clientId int) 
 func dealClientData() {
 	//logs.Info("dealClientData.........")
 
-	file.GetDb().JsonDb.Clients.Range(func(key, value interface{}) bool {
-		v := value.(*file.Client)
+	database.GetDb().JsonDb.Clients.Range(func(key, value interface{}) bool {
+		v := value.(*models.Client)
 		if vv, ok := Bridge.Client.Load(v.Id); ok {
-			v.IsConnect = true
+			v.Connected = true
 			v.Version = vv.(*bridge.Client).Version
 		} else {
-			v.IsConnect = false
+			v.Connected = false
 		}
 		//v.Flow.InletFlow = 0
 		//v.Flow.ExportFlow = 0
@@ -360,7 +361,7 @@ func dealClientData() {
 //}
 
 // close the client
-func DelClientConnect(clientId int) {
+func DelClientConnect(clientId int64) {
 	Bridge.DelClient(clientId)
 }
 
@@ -368,16 +369,16 @@ func GetDashboardData() map[string]interface{} {
 	data := make(map[string]interface{})
 	data["version"] = version.VERSION
 	//data["hostCount"] = common.GeSynctMapLen(file.GetDb().JsonDb.Hosts)
-	data["clientCount"] = common.GeSynctMapLen(file.GetDb().JsonDb.Clients)
+	data["clientCount"] = common.GeSynctMapLen(database.GetDb().JsonDb.Clients)
 	if beego.AppConfig.String("public_vkey") != "" { //remove public vkey
 		data["clientCount"] = data["clientCount"].(int) - 1
 	}
 	dealClientData()
 	c := 0
 	var in, out int64
-	file.GetDb().JsonDb.Clients.Range(func(key, value interface{}) bool {
-		v := value.(*file.Client)
-		if v.IsConnect {
+	database.GetDb().JsonDb.Clients.Range(func(key, value interface{}) bool {
+		v := value.(*models.Client)
+		if v.Connected {
 			c += 1
 		}
 		in += v.Flow.InletFlow
@@ -388,8 +389,8 @@ func GetDashboardData() map[string]interface{} {
 	data["inletFlowCount"] = int(in)
 	data["exportFlowCount"] = int(out)
 	var tcp, udp, secret, socks5, p2p, http int
-	file.GetDb().JsonDb.Tasks.Range(func(key, value interface{}) bool {
-		switch value.(*file.Tunnel).Mode {
+	database.GetDb().JsonDb.Tasks.Range(func(key, value interface{}) bool {
+		switch value.(*models.Tunnel).Mode {
 		case "tcp":
 			tcp += 1
 		case "socks5":
@@ -422,8 +423,8 @@ func GetDashboardData() map[string]interface{} {
 	data["logLevel"] = beego.AppConfig.String("log_level")
 	tcpCount := 0
 
-	file.GetDb().JsonDb.Clients.Range(func(key, value interface{}) bool {
-		tcpCount += int(value.(*file.Client).NowConn)
+	database.GetDb().JsonDb.Clients.Range(func(key, value interface{}) bool {
+		tcpCount += int(value.(*models.Client).NowConn)
 		return true
 	})
 	data["tcpCount"] = tcpCount
@@ -469,8 +470,8 @@ func flowSession(m time.Duration) {
 		select {
 		case <-ticker.C:
 			//file.GetDb().JsonDb.StoreHostToJsonFile()
-			file.GetDb().JsonDb.StoreTasksToJsonFile()
-			file.GetDb().JsonDb.StoreClientsToJsonFile()
+			database.GetDb().JsonDb.StoreTasksToJsonFile()
+			database.GetDb().JsonDb.StoreClientsToJsonFile()
 		}
 	}
 }

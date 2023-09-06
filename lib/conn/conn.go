@@ -15,12 +15,13 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"xnps/lib/database/models"
 	"xnps/lib/goroutine"
 
 	"github.com/xtaci/kcp-go"
 	"xnps/lib/common"
 	"xnps/lib/crypt"
-	"xnps/lib/file"
+	"xnps/lib/database"
 	"xnps/lib/pmux"
 	"xnps/lib/rate"
 )
@@ -198,12 +199,12 @@ func (s *Conn) GetHealthInfo() (info string, status bool, err error) {
 }
 
 // get task info
-func (s *Conn) GetConfigInfo() (c *file.Client, err error) {
+func (s *Conn) GetConfigInfo() (c *models.Client, err error) {
 	err = s.getInfo(&c)
 	c.NoStore = true
 	c.Status = true
 	if c.Flow == nil {
-		c.Flow = new(file.Flow)
+		c.Flow = new(models.Flow)
 	}
 	c.NoDisplay = false
 	return
@@ -211,13 +212,13 @@ func (s *Conn) GetConfigInfo() (c *file.Client, err error) {
 
 // get task info
 // get task info
-func (s *Conn) GetTaskInfo() (t *file.Tunnel, err error) {
+func (s *Conn) GetTaskInfo() (t *models.Tunnel, err error) {
 	//t = new(file.Tunnel)
 	err = s.getInfo(&t)
-	t.Id = int(file.GetDb().JsonDb.GetTaskId())
+	t.Id = database.GetDb().JsonDb.GetTaskId()
 	t.NoStore = true
-	t.Flow = new(file.Flow)
-	t.Target = new(file.Target)
+	t.Flow = new(models.Flow)
+	t.Target = new(models.Target)
 	//TODO:这里判断白名单端口
 	//t.Target.TargetStr = beego.AppConfig.String("allow_ports")
 	//if len(t.Target.TargetStr) < 2 {
@@ -373,7 +374,7 @@ func SetUdpSession(sess *kcp.UDPSession) {
 
 // conn1 mux conn
 func CopyWaitGroup(conn1, conn2 net.Conn, encrypt bool, snappy bool, rate *rate.Rate,
-	flow *file.Flow, isServer bool, rb []byte, task *file.Tunnel) {
+	flow *models.Flow, isServer bool, rb []byte, task *models.Tunnel) {
 	//var in, out int64
 	//var wg sync.WaitGroup
 	connHandle := GetConn(conn1, encrypt, snappy, rate, isServer)

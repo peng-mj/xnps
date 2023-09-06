@@ -1,7 +1,8 @@
 package controllers
 
 import (
-	"xnps/lib/file"
+	"xnps/lib/database"
+	"xnps/lib/database/models"
 	"xnps/server"
 	"xnps/server/tool"
 
@@ -92,19 +93,19 @@ func (s *IndexController) Add() {
 		s.SetInfo("add tunnel")
 		s.display()
 	} else {
-		id := int(file.GetDb().JsonDb.GetTaskId())
-		t := &file.Tunnel{
+		id := database.GetDb().JsonDb.GetTaskId()
+		t := &models.Tunnel{
 			Port:      s.GetIntNoErr("port"),
 			ServerIp:  s.getEscapeString("server_ip"),
 			Mode:      s.getEscapeString("type"),
-			Target:    &file.Target{TargetStr: s.getEscapeString("target"), LocalProxy: s.GetBoolNoErr("local_proxy")},
+			Target:    &models.Target{TargetStr: s.getEscapeString("target"), LocalProxy: s.GetBoolNoErr("local_proxy")},
 			Id:        id,
 			Status:    true,
 			Remark:    s.getEscapeString("remark"),
 			Password:  s.getEscapeString("password"),
 			LocalPath: s.getEscapeString("local_path"),
 			StripPre:  s.getEscapeString("strip_pre"),
-			Flow:      &file.Flow{},
+			Flow:      &models.Flow{},
 		}
 
 		if t.Port <= 0 {
@@ -115,13 +116,13 @@ func (s *IndexController) Add() {
 			s.AjaxErr("The port cannot be opened because it may has been occupied or is no longer allowed.")
 		}
 		var err error
-		if t.Client, err = file.GetDb().GetClient(s.GetIntNoErr("client_id")); err != nil {
+		if t.Client, err = database.GetDb().GetClient(s.GetIntNoErr("client_id")); err != nil {
 			s.AjaxErr(err.Error())
 		}
 		if t.Client.MaxTunnelNum != 0 && t.Client.GetTunnelNum() >= t.Client.MaxTunnelNum {
 			s.AjaxErr("The number of tunnels exceeds the limit")
 		}
-		if err := file.GetDb().NewTask(t); err != nil {
+		if err := database.GetDb().NewTask(t); err != nil {
 			s.AjaxErr(err.Error())
 		}
 		if err := server.AddTask(t); err != nil {
@@ -134,7 +135,7 @@ func (s *IndexController) Add() {
 func (s *IndexController) GetOneTunnel() {
 	id := s.GetIntNoErr("id")
 	data := make(map[string]interface{})
-	if t, err := file.GetDb().GetTask(id); err != nil {
+	if t, err := database.GetDb().GetTaskById(id); err != nil {
 		data["code"] = 0
 	} else {
 		data["code"] = 1
@@ -146,7 +147,7 @@ func (s *IndexController) GetOneTunnel() {
 func (s *IndexController) Edit() {
 	id := s.GetIntNoErr("id")
 	if s.Ctx.Request.Method == "GET" {
-		if t, err := file.GetDb().GetTask(id); err != nil {
+		if t, err := database.GetDb().GetTaskById(id); err != nil {
 			s.error()
 		} else {
 			s.Data["t"] = t
@@ -154,10 +155,10 @@ func (s *IndexController) Edit() {
 		s.SetInfo("edit tunnel")
 		s.display()
 	} else {
-		if t, err := file.GetDb().GetTask(id); err != nil {
+		if t, err := database.GetDb().GetTaskById(id); err != nil {
 			s.error()
 		} else {
-			if client, err := file.GetDb().GetClient(s.GetIntNoErr("client_id")); err != nil {
+			if client, err := database.GetDb().GetClient(s.GetIntNoErr("client_id")); err != nil {
 				s.AjaxErr("modified error,the client is not exist")
 				return
 			} else {
@@ -177,14 +178,14 @@ func (s *IndexController) Edit() {
 			}
 			t.ServerIp = s.getEscapeString("server_ip")
 			t.Mode = s.getEscapeString("type")
-			t.Target = &file.Target{TargetStr: s.getEscapeString("target")}
+			t.Target = &models.Target{TargetStr: s.getEscapeString("target")}
 			t.Password = s.getEscapeString("password")
 			t.Id = id
 			t.LocalPath = s.getEscapeString("local_path")
 			t.StripPre = s.getEscapeString("strip_pre")
 			t.Remark = s.getEscapeString("remark")
 			t.Target.LocalProxy = s.GetBoolNoErr("local_proxy")
-			file.GetDb().UpdateTask(t)
+			database.GetDb().UpdateTask(t)
 			server.StopServer(t.Id)
 			server.StartTask(t.Id)
 		}

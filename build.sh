@@ -156,7 +156,7 @@ cd bin/
 } &
 
 {
-
+  
   if [ -f "xnpc_linux_amd64" ]; then
     mv xnpc_linux_amd64 xnpc
     tar -czvf xnpc_linux_amd64.tar.gz xnpc conf/npc.conf

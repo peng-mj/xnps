@@ -6,11 +6,12 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"xnps/lib/database/models"
 
 	"github.com/astaxie/beego"
 	"xnps/lib/common"
 	"xnps/lib/crypt"
-	"xnps/lib/file"
+	"xnps/lib/database"
 	"xnps/server"
 )
 
@@ -102,6 +103,7 @@ func (s *BaseController) getEscapeString(key string) string {
 	return html.EscapeString(s.GetString(key))
 }
 
+// TODO：查看什么意思
 // 去掉没有err返回值的int
 func (s *BaseController) GetIntNoErr(key string, def ...int) int {
 	strv := s.Ctx.Input.Query(key)
@@ -213,8 +215,8 @@ func (s *BaseController) CheckUserAuth() {
 				//	}
 				//}
 			} else {
-				if v, ok := file.GetDb().JsonDb.Tasks.Load(id); ok {
-					if v.(*file.Tunnel).Client.Id == s.GetSession("clientId").(int) {
+				if v, ok := database.GetDb().JsonDb.Tasks.Load(id); ok {
+					if v.(*models.Tunnel).Client.Id == s.GetSession("clientId").(int64) {
 						belong = true
 					}
 				}

@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"sync"
 	"time"
+	"xnps/lib/database/models"
 	"xnps/lib/nps_mux"
 
 	"github.com/astaxie/beego/logs"
@@ -15,7 +16,6 @@ import (
 	"xnps/lib/config"
 	"xnps/lib/conn"
 	"xnps/lib/crypt"
-	"xnps/lib/file"
 	"xnps/server/proxy"
 )
 
@@ -32,7 +32,7 @@ var (
 type p2pBridge struct {
 }
 
-func (p2pBridge *p2pBridge) SendLinkInfo(clientId int, link *conn.Link, t *file.Tunnel) (target net.Conn, err error) {
+func (p2pBridge *p2pBridge) SendLinkInfo(clientId int64, link *conn.Link, t *models.Tunnel) (target net.Conn, err error) {
 	for i := 0; muxSession == nil; i++ {
 		if i >= 20 {
 			err = errors.New("p2pBridge:too many times to get muxSession")
@@ -62,7 +62,7 @@ func CloseLocalServer() {
 	}
 }
 
-func startLocalFileServer(config *config.CommonConfig, t *file.Tunnel, vkey string) {
+func startLocalFileServer(config *config.CommonConfig, t *models.Tunnel, vkey string) {
 	remoteConn, err := NewConn(config.Tp, vkey, config.Server, common.WORK_FILE, config.ProxyUrl)
 	if err != nil {
 		logs.Error("Local connection server failed ", err.Error())
@@ -81,22 +81,22 @@ func StartLocalServer(l *config.LocalServer, config *config.CommonConfig) error 
 	if l.Type != "secret" {
 		go handleUdpMonitor(config, l)
 	}
-	task := &file.Tunnel{
+	task := &models.Tunnel{
 		Port:     l.Port,
 		ServerIp: "0.0.0.0",
 		Status:   true,
-		Client: &file.Client{
-			Cnf: &file.Config{
+		Client: &models.Client{
+			Cnf: &models.Config{
 				User:     "",
 				Passwd:   "",
 				Compress: config.Client.Cnf.Compress,
 			},
 			Status:    true,
 			RateLimit: 0,
-			Flow:      &file.Flow{},
+			Flow:      &models.Flow{},
 		},
-		Flow:   &file.Flow{},
-		Target: &file.Target{},
+		Flow:   &models.Flow{},
+		Target: &models.Target{},
 	}
 	switch l.Type {
 	case "p2ps":

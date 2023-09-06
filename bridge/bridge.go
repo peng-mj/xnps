@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"sync"
 	"time"
+	"xnps/lib/database/models"
 	"xnps/lib/nps_mux"
 
 	"github.com/astaxie/beego"
@@ -16,7 +17,7 @@ import (
 	"xnps/lib/common"
 	"xnps/lib/conn"
 	"xnps/lib/crypt"
-	"xnps/lib/file"
+	"xnps/lib/database"
 	"xnps/lib/version"
 	"xnps/server/connection"
 	"xnps/server/tool"
@@ -44,9 +45,9 @@ type Bridge struct {
 	Client         sync.Map
 	Register       sync.Map
 	tunnelType     string //bridge type kcp or tcp
-	OpenTask       chan *file.Tunnel
-	CloseTask      chan *file.Tunnel
-	CloseClient    chan int
+	OpenTask       chan *models.Tunnel
+	CloseTask      chan *models.Tunnel
+	CloseClient    chan int64
 	SecretChan     chan *conn.Secret
 	ipVerify       bool
 	runList        sync.Map //map[int]interface{}
@@ -57,9 +58,9 @@ func NewTunnel(tunnelPort int, tunnelType string, ipVerify bool, runList sync.Ma
 	return &Bridge{
 		TunnelPort:     tunnelPort,
 		tunnelType:     tunnelType,
-		OpenTask:       make(chan *file.Tunnel),
-		CloseTask:      make(chan *file.Tunnel),
-		CloseClient:    make(chan int),
+		OpenTask:       make(chan *models.Tunnel),
+		CloseTask:      make(chan *models.Tunnel),
+		CloseClient:    make(chan int64),
 		SecretChan:     make(chan *conn.Secret),
 		ipVerify:       ipVerify,
 		runList:        runList,
@@ -176,7 +177,7 @@ func (s *Bridge) clientProcess(c *conn.Conn) {
 	}
 	//TODO:客户端验证
 	//verify
-	id, err := file.GetDb().GetIdByVerifyKey(string(buf), c.Conn.RemoteAddr().String())
+	id, err := database.GetDb().GetIdByVerifyKey(string(buf), c.Conn.RemoteAddr().String())
 	if err != nil {
 		logs.Info("Current client connection validation error, close this client:", c.Conn.RemoteAddr())
 		s.verifyError(c)
@@ -193,24 +194,24 @@ func (s *Bridge) clientProcess(c *conn.Conn) {
 	return
 }
 
-func (s *Bridge) DelClient(id int) {
+func (s *Bridge) DelClient(id int64) {
 	if v, ok := s.Client.Load(id); ok {
 		if v.(*Client).signal != nil {
 			v.(*Client).signal.Close()
 		}
 		s.Client.Delete(id)
-		if file.GetDb().IsPubClient(id) {
+		if database.GetDb().IsPubClient(id) {
 			return
 		}
-		if c, err := file.GetDb().GetClient(id); err == nil {
+		if c, err := database.GetDb().GetClient(id); err == nil {
 			s.CloseClient <- c.Id
 		}
 	}
 }
 
 // use different
-func (s *Bridge) typeDeal(typeVal string, c *conn.Conn, id int, ver string) {
-	isPub := file.GetDb().IsPubClient(id)
+func (s *Bridge) typeDeal(typeVal string, c *conn.Conn, id int64, ver string) {
+	isPub := database.GetDb().IsPubClient(id)
 	switch typeVal {
 	case common.WORK_MAIN:
 		if isPub {
@@ -242,8 +243,8 @@ func (s *Bridge) typeDeal(typeVal string, c *conn.Conn, id int, ver string) {
 		}
 
 	case common.WORK_CONFIG:
-		client, err := file.GetDb().GetClient(id)
-		if err != nil || (!isPub && !client.ConfigConnAllow) {
+		client, err := database.GetDb().GetClient(id)
+		if err != nil || (!isPub && !client.AllowUseConfigFile) {
 			c.Close()
 			return
 		}
@@ -266,7 +267,7 @@ func (s *Bridge) typeDeal(typeVal string, c *conn.Conn, id int, ver string) {
 		//read md5 secret
 		if b, err := c.GetShortContent(32); err != nil {
 			logs.Error("p2p error,", err.Error())
-		} else if t := file.GetDb().GetTaskByMd5Password(string(b)); t == nil {
+		} else if t := database.GetDb().GetTaskByMd5Password(string(b)); t == nil {
 			logs.Error("p2p error, failed to match the key successfully")
 		} else {
 			if v, ok := s.Client.Load(t.Client.Id); !ok {
@@ -298,7 +299,7 @@ func (s *Bridge) register(c *conn.Conn) {
 	}
 }
 
-func (s *Bridge) SendLinkInfo(clientId int, link *conn.Link, t *file.Tunnel) (target net.Conn, err error) {
+func (s *Bridge) SendLinkInfo(clientId int64, link *conn.Link, t *models.Tunnel) (target net.Conn, err error) {
 	//if the proxy type is local
 	if link.LocalProxy {
 		target, err = net.Dial("tcp", link.Host)
@@ -351,18 +352,18 @@ func (s *Bridge) ping() {
 	for {
 		select {
 		case <-ticker.C:
-			arr := make([]int, 0)
+			arr := make([]int64, 0)
 			s.Client.Range(func(key, value interface{}) bool {
 				v := value.(*Client)
 				if v.tunnel == nil || v.signal == nil {
 					v.retryTime += 1
 					if v.retryTime >= 3 {
-						arr = append(arr, key.(int))
+						arr = append(arr, key.(int64))
 					}
 					return true
 				}
 				if v.tunnel.IsClose {
-					arr = append(arr, key.(int))
+					arr = append(arr, key.(int64))
 				}
 				return true
 			})
@@ -375,7 +376,7 @@ func (s *Bridge) ping() {
 }
 
 // get config and add task from client config
-func (s *Bridge) getConfig(c *conn.Conn, isPub bool, client *file.Client) {
+func (s *Bridge) getConfig(c *conn.Conn, isPub bool, client *models.Client) {
 	var fail bool
 loop:
 	for {
@@ -389,12 +390,12 @@ loop:
 				break loop
 			} else {
 				var str string
-				id, err := file.GetDb().GetClientIdByVkey(string(b))
+				id, err := database.GetDb().GetClientIdByVkey(string(b))
 				if err != nil {
 					break loop
 				}
-				file.GetDb().JsonDb.Tasks.Range(func(key, value interface{}) bool {
-					v := value.(*file.Tunnel)
+				database.GetDb().JsonDb.Tasks.Range(func(key, value interface{}) bool {
+					v := value.(*models.Tunnel)
 					//if _, ok := s.runList[v.Id]; ok && v.Client.Id == id {
 					if _, ok := s.runList.Load(v.Id); ok && v.Client.Id == id {
 						str += v.Remark + common.CONN_DATA_SEQ
@@ -411,7 +412,7 @@ loop:
 				c.WriteAddFail()
 				break loop
 			} else {
-				if err = file.GetDb().NewClient(client); err != nil {
+				if err = database.GetDb().NewClient(client); err != nil {
 					fail = true
 					c.WriteAddFail()
 					break loop
@@ -446,7 +447,7 @@ loop:
 					break loop
 				}
 				for i := 0; i < len(ports); i++ {
-					tl := new(file.Tunnel)
+					tl := new(models.Tunnel)
 					tl.Mode = t.Mode
 					tl.Port = ports[i]
 					tl.ServerIp = t.ServerIp
@@ -455,16 +456,16 @@ loop:
 						tl.Remark = t.Remark
 					} else {
 						tl.Remark = t.Remark + "_" + strconv.Itoa(tl.Port)
-						tl.Target = new(file.Target)
+						tl.Target = new(models.Target)
 						if t.TargetAddr != "" {
 							tl.Target.TargetStr = t.TargetAddr + ":" + strconv.Itoa(targets[i])
 						} else {
 							tl.Target.TargetStr = strconv.Itoa(targets[i])
 						}
 					}
-					tl.Id = int(file.GetDb().JsonDb.GetTaskId())
+					tl.Id = database.GetDb().JsonDb.GetTaskId()
 					tl.Status = true
-					tl.Flow = new(file.Flow)
+					tl.Flow = new(models.Flow)
 					tl.NoStore = true
 					tl.Client = client
 					tl.Password = t.Password
@@ -472,7 +473,7 @@ loop:
 					tl.StripPre = t.StripPre
 					tl.MultiAccount = t.MultiAccount
 					if !client.HasTunnel(tl) {
-						if err := file.GetDb().NewTask(tl); err != nil {
+						if err := database.GetDb().NewTask(tl); err != nil {
 							logs.Notice("Add task error ", err.Error())
 							fail = true
 							c.WriteAddFail()

@@ -6,12 +6,12 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"xnps/lib/database/models"
 
 	"github.com/astaxie/beego/logs"
 	"xnps/bridge"
 	"xnps/lib/common"
 	"xnps/lib/conn"
-	"xnps/lib/file"
 )
 
 type UdpModeServer struct {
@@ -20,7 +20,7 @@ type UdpModeServer struct {
 	listener *net.UDPConn
 }
 
-func NewUdpModeServer(bridge *bridge.Bridge, task *file.Tunnel) *UdpModeServer {
+func NewUdpModeServer(bridge *bridge.Bridge, task *models.Tunnel) *UdpModeServer {
 	s := new(UdpModeServer)
 	s.bridge = bridge
 	s.task = task
