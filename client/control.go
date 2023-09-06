@@ -54,13 +54,7 @@ func GetTaskStatus(path string) {
 		log.Fatalln(err)
 	} else {
 		arr := strings.Split(string(b), common.CONN_DATA_SEQ)
-		for _, v := range cnf.Hosts {
-			if common.InStrArr(arr, v.Remark) {
-				log.Println(v.Remark, "ok")
-			} else {
-				log.Println(v.Remark, "not running")
-			}
-		}
+
 		for _, v := range cnf.Tasks {
 			ports := common.GetPorts(v.Ports)
 			if v.Mode == "secret" {
@@ -133,20 +127,20 @@ re:
 		}
 		vkey = string(b)
 	}
-	//upgrade to os.WriteFile
+	//upgrade to os.WriteFile for golang 1.20
 	os.WriteFile(filepath.Join(common.GetTmpPath(), "npc_vkey.txt"), []byte(vkey), 0600)
 
 	//send hosts to server
-	for _, v := range cnf.Hosts {
-		if _, err := c.SendInfo(v, common.NEW_HOST); err != nil {
-			logs.Error(err)
-			goto re
-		}
-		if !c.GetAddStatus() {
-			logs.Error(errAdd, v.Host)
-			goto re
-		}
-	}
+	//for _, v := range cnf.Hosts {
+	//	if _, err := c.SendInfo(v, common.NEW_HOST); err != nil {
+	//		logs.Error(err)
+	//		goto re
+	//	}
+	//	if !c.GetAddStatus() {
+	//		logs.Error(errAdd, v.Host)
+	//		goto re
+	//	}
+	//}
 
 	//send  task to server
 	for _, v := range cnf.Tasks {

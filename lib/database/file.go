@@ -1,50 +1,67 @@
-package file
+package database
 
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/astaxie/beego/logs"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
-
 	"xnps/lib/common"
+	"xnps/lib/database/models"
 	"xnps/lib/rate"
 )
+
+var Db *DbUtils
+
+func NewDb(dbFile string) *DbUtils {
+	var Db = DbUtils{}
+	var err error
+	Db.GDb, err = gorm.Open(sqlite.Open(dbFile), &gorm.Config{})
+	if err != nil {
+		fmt.Println("打开数据库失败")
+		os.Exit(-1)
+	} else {
+		err := Db.GDb.AutoMigrate(
+			models.Client{})
+		if err != nil {
+			logs.Info("创建数据表失败", err)
+		}
+	}
+	return &Db
+}
 
 func NewJsonDb(runPath string) *JsonDb {
 	return &JsonDb{
 		RunPath:        runPath,
 		TaskFilePath:   filepath.Join(runPath, "conf", "tasks.json"),
-		HostFilePath:   filepath.Join(runPath, "conf", "hosts.json"),
 		ClientFilePath: filepath.Join(runPath, "conf", "clients.json"),
 	}
 }
 
 type JsonDb struct {
 	Tasks            sync.Map
-	Hosts            sync.Map
-	HostsTmp         sync.Map
 	Clients          sync.Map
 	RunPath          string
 	ClientIncreaseId int32  //client increased id
 	TaskIncreaseId   int32  //task increased id
-	HostIncreaseId   int32  //host increased id
 	TaskFilePath     string //task file path
-	HostFilePath     string //host file path
 	ClientFilePath   string //client file path
 }
 
 func (s *JsonDb) LoadTaskFromJsonFile() {
 	loadSyncMapFromFile(s.TaskFilePath, func(v string) {
 		var err error
-		post := new(Tunnel)
+		post := new(models.Tunnel)
 		if json.Unmarshal([]byte(v), &post) != nil {
 			return
 		}
-		if post.Client, err = s.GetClient(post.Client.Id); err != nil {
+		if post.Client, err = s.GetClientById(post.Client.Id); err != nil {
 			return
 		}
 		s.Tasks.Store(post.Id, post)
@@ -56,7 +73,7 @@ func (s *JsonDb) LoadTaskFromJsonFile() {
 
 func (s *JsonDb) LoadClientFromJsonFile() {
 	loadSyncMapFromFile(s.ClientFilePath, func(v string) {
-		post := new(Client)
+		post := new(models.Client)
 		if json.Unmarshal([]byte(v), &post) != nil {
 			return
 		}
@@ -74,26 +91,9 @@ func (s *JsonDb) LoadClientFromJsonFile() {
 	})
 }
 
-func (s *JsonDb) LoadHostFromJsonFile() {
-	loadSyncMapFromFile(s.HostFilePath, func(v string) {
-		var err error
-		post := new(Host)
-		if json.Unmarshal([]byte(v), &post) != nil {
-			return
-		}
-		if post.Client, err = s.GetClient(post.Client.Id); err != nil {
-			return
-		}
-		s.Hosts.Store(post.Id, post)
-		if post.Id > int(s.HostIncreaseId) {
-			s.HostIncreaseId = int32(post.Id)
-		}
-	})
-}
-
-func (s *JsonDb) GetClient(id int) (c *Client, err error) {
+func (s *JsonDb) GetClientById(id int) (c *models.Client, err error) {
 	if v, ok := s.Clients.Load(id); ok {
-		c = v.(*Client)
+		c = v.(*models.Client)
 		return
 	}
 	err = errors.New("未找到客户端")
@@ -102,11 +102,12 @@ func (s *JsonDb) GetClient(id int) (c *Client, err error) {
 
 var hostLock sync.Mutex
 
-func (s *JsonDb) StoreHostToJsonFile() {
-	hostLock.Lock()
-	storeSyncMapToFile(s.Hosts, s.HostFilePath)
-	hostLock.Unlock()
-}
+//
+//func (s *JsonDb) StoreHostToJsonFile() {
+//	hostLock.Lock()
+//	storeSyncMapToFile(s.Hosts, s.HostFilePath)
+//	hostLock.Unlock()
+//}
 
 var taskLock sync.Mutex
 
@@ -132,10 +133,6 @@ func (s *JsonDb) GetTaskId() int32 {
 	return atomic.AddInt32(&s.TaskIncreaseId, 1)
 }
 
-func (s *JsonDb) GetHostId() int32 {
-	return atomic.AddInt32(&s.HostIncreaseId, 1)
-}
-
 func loadSyncMapFromFile(filePath string, f func(value string)) {
 	b, err := common.ReadAllFromFile(filePath)
 	if err != nil {
@@ -156,20 +153,20 @@ func storeSyncMapToFile(m sync.Map, filePath string) {
 		var b []byte
 		var err error
 		switch value.(type) {
-		case *Tunnel:
-			obj := value.(*Tunnel)
+		case *models.Tunnel:
+			obj := value.(*models.Tunnel)
 			if obj.NoStore {
 				return true
 			}
 			b, err = json.Marshal(obj)
-		case *Host:
-			obj := value.(*Host)
+		case *models.Host:
+			obj := value.(*models.Host)
 			if obj.NoStore {
 				return true
 			}
 			b, err = json.Marshal(obj)
-		case *Client:
-			obj := value.(*Client)
+		case *models.Client:
+			obj := value.(*models.Client)
 			if obj.NoStore {
 				return true
 			}

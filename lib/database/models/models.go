@@ -1,0 +1,240 @@
+package models
+
+import (
+	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
+	"xnps/lib/file"
+
+	"github.com/pkg/errors"
+	"xnps/lib/rate"
+)
+
+type Flow struct {
+	ExportFlow int64 //出口流浪
+	InletFlow  int64 //入口流量
+	FlowLimit  int64 //流量限制
+	sync.RWMutex
+}
+
+func (s *Flow) Add(in, out int64) {
+	s.Lock()
+	defer s.Unlock()
+	s.InletFlow += int64(in)
+	s.ExportFlow += int64(out)
+}
+
+type Config struct {
+	U        string //web的用户名
+	P        string //web的密码
+	Compress bool
+	Crypt    bool
+}
+
+type Client2 struct {
+	Id              int64      `gorm:"column:id;type:int;auto_increment;not null;primaryKey;" json:"Id"`
+	VerifyKey       string     `gorm:"column:verify_key;type:text;not null" json:"VerifyKey"`
+	Addr            string     `gorm:"column:addr;type:text" json:"Addr"`
+	Remark          string     `gorm:"column:remark;type:text" json:"Remark"`
+	Valid           bool       `gorm:"column:valid;type:integer;default:0;not null" json:"Valid"`
+	Connected       bool       `gorm:"column:connected;type:integer;default:0;not null" json:"Connected"`
+	RateLimit       int        `gorm:"column:rate_limit;type:integer;default:0;not null" json:"RateLimit"`
+	FlowExport      float32    `gorm:"column:flow_export;type:real;not null;default:0" json:"FlowExport"`
+	FlowInle        float32    `gorm:"column:flow_inle;type:real;not null;default:0" json:"FlowInle"`
+	NowRate         float32    `gorm:"column:now_rate;type:real;default:0;not null" json:"NowRate"`
+	MaxConn         int32      `gorm:"column:max_conn;type:integer;default:100;not null" json:"MaxConn"`
+	NowConn         int32      `gorm:"column:now_conn;type:integer;default:0;not null" json:"NowConn"`
+	WebUser         string     `gorm:"column:web_user;type:text" json:"WebUser"`
+	WebPasswd       string     `gorm:"column:web_passwd;type:text" json:"WebPasswd"`
+	AllowFileConfig bool       `gorm:"column:allow_file_config;type:integer;default:1;not null" json:"AllowFileConfig"`
+	MaxTunnelNum    int        `gorm:"column:max_tunnel_num;type:integer;default:100;not null" json:"MaxTunnelNum"`
+	Version         string     `gorm:"column:version;type:text;default:Null;not null" json:"Version"`
+	BlackId         *int       `gorm:"column:black_id;type:integer;default:0;not null" json:"BlackId"`
+	Flow            *Flow      `json:"-"`
+	Rate            *rate.Rate `json:"-"`
+	sync.RWMutex
+}
+
+func (*Client2) TableName() string {
+	return "client"
+}
+
+type Client struct {
+	//Cnf             *Config
+	Id              int        //id
+	VerifyKey       string     //verify key
+	Addr            string     //the ip of client
+	Remark          string     //remark
+	Status          bool       //is allow connect
+	IsConnect       bool       //is the client connect
+	RateLimit       int        //rate /kb
+	Flow            *Flow      //flow setting
+	Rate            *rate.Rate //rate limit
+	NoStore         bool       //no store to file
+	NoDisplay       bool       //no display on web
+	MaxConn         int        //the max connection num of client allow
+	NowConn         int32      //the connection num of now
+	WebUserName     string     //the username of web login
+	WebPassword     string     //the password of web login
+	ConfigConnAllow bool       //is allow connected by config file
+	MaxTunnelNum    int
+	Version         string
+	BlackIpList     []string
+	sync.RWMutex
+}
+
+func NewClient(vKey string, noStore bool, noDisplay bool) *Client {
+	return &Client{
+		//Cnf:       new(Config),
+		Id:        0,
+		VerifyKey: vKey,
+		Addr:      "",
+		Remark:    "",
+		Status:    true,
+		IsConnect: false,
+		RateLimit: 0,
+		Flow:      new(Flow),
+		Rate:      nil,
+		NoStore:   noStore,
+		RWMutex:   sync.RWMutex{},
+		NoDisplay: noDisplay,
+	}
+}
+func NewClient2(vKey string, noStore bool, noDisplay bool) *Client2 {
+	return &Client2{
+		Id:        0,
+		VerifyKey: vKey,
+		Addr:      "",
+		Remark:    "",
+		RateLimit: 0,
+		Flow:      new(Flow),
+		Rate:      nil,
+		RWMutex:   sync.RWMutex{},
+	}
+}
+
+func (s *Client) CutConn() {
+	atomic.AddInt32(&s.NowConn, 1)
+}
+
+func (s *Client) AddConn() {
+	atomic.AddInt32(&s.NowConn, -1)
+}
+
+func (s *Client) GetConn() bool {
+	if s.MaxConn == 0 || int(s.NowConn) < s.MaxConn {
+		s.CutConn()
+		return true
+	}
+	return false
+}
+
+func (s *Client) HasTunnel(t *Tunnel) (exist bool) {
+	file.GetDb().JsonDb.Tasks.Range(func(key, value interface{}) bool {
+		v := value.(*Tunnel)
+		if v.Client.Id == s.Id && v.Port == t.Port && t.Port != 0 {
+			exist = true
+			return false
+		}
+		return true
+	})
+	return
+}
+
+func (s *Client) GetTunnelNum() (num int) {
+	file.GetDb().JsonDb.Tasks.Range(func(key, value interface{}) bool {
+		v := value.(*Tunnel)
+		if v.Client.Id == s.Id {
+			num++
+		}
+		return true
+	})
+	return
+}
+
+type Tunnel struct {
+	Id           int           `gorm:"column:primaryKey;id" json:"Id"`
+	Port         int           `gorm:"column:port;type:integer;not null;default:8080" json:"Port"`
+	ServerIp     string        `gorm:"column:server_ip;type:integer;not null;default:" json:"ServerIp"`
+	Mode         string        `gorm:"column:mode;type:integer;not null;default:" json:"Mode"`
+	Status       bool          `gorm:"column:status;type:integer;not null;default:" json:"Status"`
+	RunStatus    bool          `gorm:"column:id;type:integer;not null;default:" json:"RunStatus"`
+	Client       *Client       `gorm:"-" json:"-"`
+	Ports        string        `gorm:"column:id;type:integer;not null;default:" json:"Ports"`
+	Flow         *Flow         `gorm:"-" json:"-"`
+	Password     string        `gorm:"column:id;type:integer;not null;default:" json:"Password"`
+	Remark       string        `gorm:"column:id;type:integer;not null;default:" json:"Remark"`
+	TargetAddr   string        `gorm:"column:id;type:integer;not null;default:" json:"TargetAddr"`
+	NoStore      bool          `gorm:"column:id;type:integer;not null;default:" json:"NoStore"`
+	IsHttp       bool          `gorm:"column:id;type:integer;not null;default:" json:"IsHttp"`
+	LocalPath    string        `gorm:"column:id;type:integer;not null;default:" json:"LocalPath"`
+	StripPre     string        `gorm:"column:id;type:integer;not null;default:" json:"StripPre"`
+	Target       *Target       `gorm:"-" json:"-"`
+	MultiAccount *MultiAccount `gorm:"-" json:"-"`
+	Health       `gorm:"-" json:"-"`
+	sync.RWMutex `gorm:"-" json:"-"`
+}
+
+type Health struct {
+	HealthCheckTimeout  int
+	HealthMaxFail       int
+	HealthCheckInterval int
+	HealthNextTime      time.Time
+	HealthMap           map[string]int
+	HttpHealthUrl       string
+	HealthRemoveArr     []string
+	HealthCheckType     string
+	HealthCheckTarget   string
+	sync.RWMutex
+}
+
+type Host struct {
+	Id           int
+	Host         string //host
+	HeaderChange string //header change
+	HostChange   string //host change
+	Location     string //url router
+	Remark       string //remark
+	Scheme       string //http https all
+	CertFilePath string
+	KeyFilePath  string
+	NoStore      bool
+	IsClose      bool
+	Flow         *Flow
+	Client       *Client
+	Target       *Target //目标
+	Health       `json:"-"`
+	sync.RWMutex
+}
+
+type Target struct {
+	nowIndex   int
+	TargetStr  string
+	TargetArr  []string
+	LocalProxy bool
+	sync.RWMutex
+}
+
+type MultiAccount struct {
+	AccountMap map[string]string // multi account and pwd
+}
+
+func (s *Target) GetRandomTarget() (string, error) {
+	if s.TargetArr == nil {
+		s.TargetArr = strings.Split(s.TargetStr, "\n")
+	}
+	if len(s.TargetArr) == 1 {
+		return s.TargetArr[0], nil
+	}
+	if len(s.TargetArr) == 0 {
+		return "", errors.New("all inward-bending targets are offline")
+	}
+	s.Lock()
+	defer s.Unlock()
+	if s.nowIndex >= len(s.TargetArr)-1 {
+		s.nowIndex = -1
+	}
+	s.nowIndex++
+	return s.TargetArr[s.nowIndex], nil
+}

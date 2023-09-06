@@ -1,12 +1,10 @@
 package file
 
 import (
+	"github.com/pkg/errors"
 	"strings"
 	"sync"
 	"sync/atomic"
-	"time"
-
-	"github.com/pkg/errors"
 	"xnps/lib/rate"
 )
 
@@ -25,8 +23,8 @@ func (s *Flow) Add(in, out int64) {
 }
 
 type Config struct {
-	U        string
-	P        string
+	User     string
+	Passwd   string
 	Compress bool
 	Crypt    bool
 }
@@ -101,6 +99,7 @@ func (s *Client) HasTunnel(t *Tunnel) (exist bool) {
 	return
 }
 
+// 总获取隧道数量
 func (s *Client) GetTunnelNum() (num int) {
 	GetDb().JsonDb.Tasks.Range(func(key, value interface{}) bool {
 		v := value.(*Tunnel)
@@ -112,18 +111,28 @@ func (s *Client) GetTunnelNum() (num int) {
 	return
 }
 
-func (s *Client) HasHost(h *Host) bool {
-	var has bool
-	GetDb().JsonDb.Hosts.Range(func(key, value interface{}) bool {
-		v := value.(*Host)
-		if v.Client.Id == s.Id && v.Host == h.Host && h.Location == v.Location {
-			has = true
-			return false
-		}
-		return true
-	})
-	return has
-}
+//type Tunnel struct {
+//	Id           int64         `gorm:"column:primaryKey;id" json:"Id"`
+//	Port         int32         `gorm:"column:port;type:integer;not null;default:8080" json:"Port"`
+//	ServerIp     string        `gorm:"column:server_ip;type:integer;not null;default:" json:"ServerIp"`
+//	Mode         string        `gorm:"column:mode;type:integer;not null;default:" json:"Mode"`
+//	Status       bool          `gorm:"column:status;type:integer;not null;default:" json:"Status"`
+//	RunStatus    bool          `gorm:"column:run_status;type:integer;not null;default:" json:"RunStatus"`
+//	ClientId     int           `gorm:"column:client_id;type:integer;not null;default:" json:"Client"`
+//	Ports        string        `gorm:"column:ports;type:integer;not null;default:80" json:"Ports"`
+//	FlowId       int           `gorm:"column:flow_id;type:integer;not null;default:" json:"FlowId"`
+//	Password     string        `gorm:"column:passwd;type:integer;not null;default:" json:"Password"`
+//	Remark       string        `gorm:"column:remark;type:integer;not null;default:" json:"Remark"`
+//	TargetAddr   string        `gorm:"column:targetAddr;type:integer;not null;default:" json:"TargetAddr"`
+//	NoStore      bool          `gorm:"column:no_store;type:integer;not null;default:" json:"NoStore"`
+//	IsHttp       bool          `gorm:"column:is_http;type:integer;not null;default:" json:"IsHttp"`
+//	LocalPath    string        `gorm:"column:local_path;type:integer;not null;default:" json:"LocalPath"`
+//	StripPre     string        `gorm:"column:strip_pre;type:integer;not null;default:" json:"StripPre"`
+//	Target       *Target       `gorm:"-" json:"Target"`
+//	MultiAccount *MultiAccount `gorm:"-" json:"MultiAccount"`
+//	Health       `gorm:"-" json:"-"`
+//	sync.RWMutex `gorm:"-" json:"-"`
+//}
 
 type Tunnel struct {
 	Id           int
@@ -144,41 +153,22 @@ type Tunnel struct {
 	StripPre     string
 	Target       *Target
 	MultiAccount *MultiAccount
-	Health
+	//Health
 	sync.RWMutex
 }
 
-type Health struct {
-	HealthCheckTimeout  int
-	HealthMaxFail       int
-	HealthCheckInterval int
-	HealthNextTime      time.Time
-	HealthMap           map[string]int
-	HttpHealthUrl       string
-	HealthRemoveArr     []string
-	HealthCheckType     string
-	HealthCheckTarget   string
-	sync.RWMutex
-}
-
-type Host struct {
-	Id           int
-	Host         string //host
-	HeaderChange string //header change
-	HostChange   string //host change
-	Location     string //url router
-	Remark       string //remark
-	Scheme       string //http https all
-	CertFilePath string
-	KeyFilePath  string
-	NoStore      bool
-	IsClose      bool
-	Flow         *Flow
-	Client       *Client
-	Target       *Target //目标
-	Health       `json:"-"`
-	sync.RWMutex
-}
+//type Health struct {
+//	HealthCheckTimeout  int
+//	HealthMaxFail       int
+//	HealthCheckInterval int
+//	HealthNextTime      time.Time
+//	HealthMap           map[string]int
+//	HttpHealthUrl       string
+//	HealthRemoveArr     []string
+//	HealthCheckType     string
+//	HealthCheckTarget   string
+//	sync.RWMutex
+//}
 
 type Target struct {
 	nowIndex   int
@@ -188,6 +178,7 @@ type Target struct {
 	sync.RWMutex
 }
 
+// 这个是当使用socket5代理模式时，多账户
 type MultiAccount struct {
 	AccountMap map[string]string // multi account and pwd
 }

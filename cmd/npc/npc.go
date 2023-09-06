@@ -6,6 +6,7 @@ import (
 	"github.com/astaxie/beego/logs"
 	"github.com/ccding/go-stun/stun"
 	"github.com/kardianos/service"
+	"log"
 	"os"
 	"os/exec"
 	"runtime"
@@ -106,6 +107,9 @@ func main() {
 		case "status":
 			if len(os.Args) > 2 {
 				path := strings.Replace(os.Args[2], "-config=", "", -1)
+				if len(path) < 3 {
+					log.Println("文件不存在", path)
+				}
 				client.GetTaskStatus(path)
 			}
 		case "register":

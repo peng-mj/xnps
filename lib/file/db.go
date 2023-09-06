@@ -3,7 +3,6 @@ package file
 import (
 	"errors"
 	"fmt"
-	"net/http"
 	"sort"
 	"strings"
 	"sync"
@@ -28,7 +27,6 @@ func GetDb() *DbUtils {
 		jsonDb := NewJsonDb(common.GetRunPath())
 		jsonDb.LoadClientFromJsonFile()
 		jsonDb.LoadTaskFromJsonFile()
-		jsonDb.LoadHostFromJsonFile()
 		Db = &DbUtils{JsonDb: jsonDb}
 	})
 	return Db
@@ -103,7 +101,7 @@ func (s *DbUtils) NewTask(t *Tunnel) (err error) {
 	if err != nil {
 		return
 	}
-	t.Flow = new(Flow)
+	//t.Flow = new(Flow)
 	s.JsonDb.Tasks.Store(t.Id, t)
 	s.JsonDb.StoreTasksToJsonFile()
 	return
@@ -142,60 +140,60 @@ func (s *DbUtils) GetTask(id int) (t *Tunnel, err error) {
 	return
 }
 
-func (s *DbUtils) DelHost(id int) error {
-	s.JsonDb.Hosts.Delete(id)
-	s.JsonDb.StoreHostToJsonFile()
-	return nil
-}
+//func (s *DbUtils) DelHost(id int) error {
+//	s.JsonDb.Hosts.Delete(id)
+//	s.JsonDb.StoreHostToJsonFile()
+//	return nil
+//}
 
-func (s *DbUtils) IsHostExist(h *Host) bool {
-	var exist bool
-	s.JsonDb.Hosts.Range(func(key, value interface{}) bool {
-		v := value.(*Host)
-		if v.Id != h.Id && v.Host == h.Host && h.Location == v.Location && (v.Scheme == "all" || v.Scheme == h.Scheme) {
-			exist = true
-			return false
-		}
-		return true
-	})
-	return exist
-}
+//func (s *DbUtils) IsHostExist(h *Host) bool {
+//	var exist bool
+//	s.JsonDb.Hosts.Range(func(key, value interface{}) bool {
+//		v := value.(*Host)
+//		if v.Id != h.Id && v.Host == h.Host && h.Location == v.Location && (v.Scheme == "all" || v.Scheme == h.Scheme) {
+//			exist = true
+//			return false
+//		}
+//		return true
+//	})
+//	return exist
+//}
 
-func (s *DbUtils) NewHost(t *Host) error {
-	if t.Location == "" {
-		t.Location = "/"
-	}
-	if s.IsHostExist(t) {
-		return errors.New("host has exist")
-	}
-	t.Flow = new(Flow)
-	s.JsonDb.Hosts.Store(t.Id, t)
-	s.JsonDb.StoreHostToJsonFile()
-	return nil
-}
-
-func (s *DbUtils) GetHost(start, length int, id int, search string) ([]*Host, int) {
-	list := make([]*Host, 0)
-	var cnt int
-	keys := GetMapKeys(s.JsonDb.Hosts, false, "", "")
-	for _, key := range keys {
-		if value, ok := s.JsonDb.Hosts.Load(key); ok {
-			v := value.(*Host)
-			if search != "" && !(v.Id == common.GetIntNoErrByStr(search) || strings.Contains(v.Host, search) || strings.Contains(v.Remark, search) || strings.Contains(v.Client.VerifyKey, search)) {
-				continue
-			}
-			if id == 0 || v.Client.Id == id {
-				cnt++
-				if start--; start < 0 {
-					if length--; length >= 0 {
-						list = append(list, v)
-					}
-				}
-			}
-		}
-	}
-	return list, cnt
-}
+//func (s *DbUtils) NewHost(t *Host) error {
+//	if t.Location == "" {
+//		t.Location = "/"
+//	}
+//	if s.IsHostExist(t) {
+//		return errors.New("host has exist")
+//	}
+//	t.Flow = new(Flow)
+//	s.JsonDb.Hosts.Store(t.Id, t)
+//	s.JsonDb.StoreHostToJsonFile()
+//	return nil
+//}
+//
+//func (s *DbUtils) GetHost(start, length int, id int, search string) ([]*Host, int) {
+//	list := make([]*Host, 0)
+//	var cnt int
+//	keys := GetMapKeys(s.JsonDb.Hosts, false, "", "")
+//	for _, key := range keys {
+//		if value, ok := s.JsonDb.Hosts.Load(key); ok {
+//			v := value.(*Host)
+//			if search != "" && !(v.Id == common.GetIntNoErrByStr(search) || strings.Contains(v.Host, search) || strings.Contains(v.Remark, search) || strings.Contains(v.Client.VerifyKey, search)) {
+//				continue
+//			}
+//			if id == 0 || v.Client.Id == id {
+//				cnt++
+//				if start--; start < 0 {
+//					if length--; length >= 0 {
+//						list = append(list, v)
+//					}
+//				}
+//			}
+//		}
+//	}
+//	return list, cnt
+//}
 
 func (s *DbUtils) DelClient(id int) error {
 	s.JsonDb.Clients.Delete(id)
@@ -307,56 +305,56 @@ func (s *DbUtils) GetClientIdByVkey(vkey string) (id int, err error) {
 	return
 }
 
-func (s *DbUtils) GetHostById(id int) (h *Host, err error) {
-	if v, ok := s.JsonDb.Hosts.Load(id); ok {
-		h = v.(*Host)
-		return
-	}
-	err = errors.New("The host could not be parsed")
-	return
-}
-
-// get key by host from x
-func (s *DbUtils) GetInfoByHost(host string, r *http.Request) (h *Host, err error) {
-	var hosts []*Host
-	//Handling Ported Access
-	host = common.GetIpByAddr(host)
-	s.JsonDb.Hosts.Range(func(key, value interface{}) bool {
-		v := value.(*Host)
-		if v.IsClose {
-			return true
-		}
-		//Remove http(s) http(s)://a.proxy.com
-		//*.proxy.com *.a.proxy.com  Do some pan-parsing
-		if v.Scheme != "all" && v.Scheme != r.URL.Scheme {
-			return true
-		}
-		tmpHost := v.Host
-		if strings.Contains(tmpHost, "*") {
-			tmpHost = strings.Replace(tmpHost, "*", "", -1)
-			if strings.Contains(host, tmpHost) {
-				hosts = append(hosts, v)
-			}
-		} else if v.Host == host {
-			hosts = append(hosts, v)
-		}
-		return true
-	})
-
-	for _, v := range hosts {
-		//If not set, default matches all
-		if v.Location == "" {
-			v.Location = "/"
-		}
-		if strings.Index(r.RequestURI, v.Location) == 0 {
-			if h == nil || (len(v.Location) > len(h.Location)) {
-				h = v
-			}
-		}
-	}
-	if h != nil {
-		return
-	}
-	err = errors.New("The host could not be parsed")
-	return
-}
+//func (s *DbUtils) GetHostById(id int) (h *Host, err error) {
+//	if v, ok := s.JsonDb.Hosts.Load(id); ok {
+//		h = v.(*Host)
+//		return
+//	}
+//	err = errors.New("The host could not be parsed")
+//	return
+//}
+//
+//// get key by host from x
+//func (s *DbUtils) GetInfoByHost(host string, r *http.Request) (h *Host, err error) {
+//	var hosts []*Host
+//	//Handling Ported Access
+//	host = common.GetIpByAddr(host)
+//	s.JsonDb.Hosts.Range(func(key, value interface{}) bool {
+//		v := value.(*Host)
+//		if v.IsClose {
+//			return true
+//		}
+//		//Remove http(s) http(s)://a.proxy.com
+//		//*.proxy.com *.a.proxy.com  Do some pan-parsing
+//		if v.Scheme != "all" && v.Scheme != r.URL.Scheme {
+//			return true
+//		}
+//		tmpHost := v.Host
+//		if strings.Contains(tmpHost, "*") {
+//			tmpHost = strings.Replace(tmpHost, "*", "", -1)
+//			if strings.Contains(host, tmpHost) {
+//				hosts = append(hosts, v)
+//			}
+//		} else if v.Host == host {
+//			hosts = append(hosts, v)
+//		}
+//		return true
+//	})
+//
+//	for _, v := range hosts {
+//		//If not set, default matches all
+//		if v.Location == "" {
+//			v.Location = "/"
+//		}
+//		if strings.Index(r.RequestURI, v.Location) == 0 {
+//			if h == nil || (len(v.Location) > len(h.Location)) {
+//				h = v
+//			}
+//		}
+//	}
+//	if h != nil {
+//		return
+//	}
+//	err = errors.New("The host could not be parsed")
+//	return
+//}

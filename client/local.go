@@ -87,8 +87,8 @@ func StartLocalServer(l *config.LocalServer, config *config.CommonConfig) error 
 		Status:   true,
 		Client: &file.Client{
 			Cnf: &file.Config{
-				U:        "",
-				P:        "",
+				User:     "",
+				Passwd:   "",
 				Compress: config.Client.Cnf.Compress,
 			},
 			Status:    true,

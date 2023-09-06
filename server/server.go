@@ -59,7 +59,7 @@ func DealBridgeTask() {
 		case t := <-Bridge.CloseTask:
 			StopServer(t.Id)
 		case id := <-Bridge.CloseClient:
-			DelTunnelAndHostByClientId(id, true)
+			//DelTunnelAndHostByClientId(id, true)
 			if v, ok := file.GetDb().JsonDb.Clients.Load(id); ok {
 				if v.(*file.Client).NoStore {
 					file.GetDb().DelClient(id)
@@ -326,37 +326,38 @@ func dealClientData() {
 	return
 }
 
-// delete all host and tasks by client id
-func DelTunnelAndHostByClientId(clientId int, justDelNoStore bool) {
-	var ids []int
-	file.GetDb().JsonDb.Tasks.Range(func(key, value interface{}) bool {
-		v := value.(*file.Tunnel)
-		if justDelNoStore && !v.NoStore {
-			return true
-		}
-		if v.Client.Id == clientId {
-			ids = append(ids, v.Id)
-		}
-		return true
-	})
-	for _, id := range ids {
-		DelTask(id)
-	}
-	ids = ids[:0]
-	file.GetDb().JsonDb.Hosts.Range(func(key, value interface{}) bool {
-		v := value.(*file.Host)
-		if justDelNoStore && !v.NoStore {
-			return true
-		}
-		if v.Client.Id == clientId {
-			ids = append(ids, v.Id)
-		}
-		return true
-	})
-	for _, id := range ids {
-		file.GetDb().DelHost(id)
-	}
-}
+//
+//// delete all host and tasks by client id
+//func DelTunnelAndHostByClientId(clientId int, justDelNoStore bool) {
+//	var ids []int
+//	file.GetDb().JsonDb.Tasks.Range(func(key, value interface{}) bool {
+//		v := value.(*file.Tunnel)
+//		if justDelNoStore && !v.NoStore {
+//			return true
+//		}
+//		if v.Client.Id == clientId {
+//			ids = append(ids, v.Id)
+//		}
+//		return true
+//	})
+//	for _, id := range ids {
+//		DelTask(id)
+//	}
+//	ids = ids[:0]
+//	file.GetDb().JsonDb.Hosts.Range(func(key, value interface{}) bool {
+//		v := value.(*file.Host)
+//		if justDelNoStore && !v.NoStore {
+//			return true
+//		}
+//		if v.Client.Id == clientId {
+//			ids = append(ids, v.Id)
+//		}
+//		return true
+//	})
+//	for _, id := range ids {
+//		file.GetDb().DelHost(id)
+//	}
+//}
 
 // close the client
 func DelClientConnect(clientId int) {
@@ -366,7 +367,7 @@ func DelClientConnect(clientId int) {
 func GetDashboardData() map[string]interface{} {
 	data := make(map[string]interface{})
 	data["version"] = version.VERSION
-	data["hostCount"] = common.GeSynctMapLen(file.GetDb().JsonDb.Hosts)
+	//data["hostCount"] = common.GeSynctMapLen(file.GetDb().JsonDb.Hosts)
 	data["clientCount"] = common.GeSynctMapLen(file.GetDb().JsonDb.Clients)
 	if beego.AppConfig.String("public_vkey") != "" { //remove public vkey
 		data["clientCount"] = data["clientCount"].(int) - 1
@@ -467,7 +468,7 @@ func flowSession(m time.Duration) {
 	for {
 		select {
 		case <-ticker.C:
-			file.GetDb().JsonDb.StoreHostToJsonFile()
+			//file.GetDb().JsonDb.StoreHostToJsonFile()
 			file.GetDb().JsonDb.StoreTasksToJsonFile()
 			file.GetDb().JsonDb.StoreClientsToJsonFile()
 		}

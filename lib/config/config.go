@@ -32,10 +32,10 @@ type Config struct {
 	content      string
 	title        []string
 	CommonConfig *CommonConfig
-	Hosts        []*file.Host
-	Tasks        []*file.Tunnel
-	Healths      []*file.Health
-	LocalServer  []*LocalServer
+	//Hosts        []*file.Host
+	Tasks []*file.Tunnel
+	//Healths     []*file.Health
+	LocalServer []*LocalServer
 }
 
 func NewConfig(path string) (c *Config, err error) {
@@ -76,18 +76,18 @@ func NewConfig(path string) (c *Config, err error) {
 				continue
 			}
 			//health set
-			if strings.Index(getTitleContent(c.title[i]), "health") == 0 {
-				c.Healths = append(c.Healths, dealHealth(nowContent))
-				continue
-			}
+			//if strings.Index(getTitleContent(c.title[i]), "health") == 0 {
+			//	c.Healths = append(c.Healths, dealHealth(nowContent))
+			//	continue
+			//}
 			switch c.title[i] {
 			case "[common]":
 				c.CommonConfig = dealCommon(nowContent)
 			default:
 				if strings.Index(nowContent, "host") > -1 {
-					h := dealHost(nowContent)
-					h.Remark = getTitleContent(c.title[i])
-					c.Hosts = append(c.Hosts, h)
+					//h := dealHost(nowContent)
+					//h.Remark = getTitleContent(c.title[i])
+					//c.Hosts = append(c.Hosts, h)
 				} else {
 					t := dealTunnel(nowContent)
 					t.Remark = getTitleContent(c.title[i])
@@ -125,9 +125,9 @@ func dealCommon(s string) *CommonConfig {
 		case "auto_reconnection":
 			c.AutoReconnection = common.GetBoolByStr(item[1])
 		case "basic_username":
-			c.Client.Cnf.U = item[1]
+			c.Client.Cnf.User = item[1]
 		case "basic_password":
-			c.Client.Cnf.P = item[1]
+			c.Client.Cnf.Passwd = item[1]
 		case "web_password":
 			c.Client.WebPassword = item[1]
 		case "web_username":
@@ -155,65 +155,66 @@ func dealCommon(s string) *CommonConfig {
 	return c
 }
 
-func dealHost(s string) *file.Host {
-	h := &file.Host{}
-	h.Target = new(file.Target)
-	h.Scheme = "all"
-	var headerChange string
-	for _, v := range splitStr(s) {
-		item := strings.Split(v, "=")
-		if len(item) == 0 {
-			continue
-		} else if len(item) == 1 {
-			item = append(item, "")
-		}
-		switch strings.TrimSpace(item[0]) {
-		case "host":
-			h.Host = item[1]
-		case "target_addr":
-			h.Target.TargetStr = strings.Replace(item[1], ",", "\n", -1)
-		case "host_change":
-			h.HostChange = item[1]
-		case "scheme":
-			h.Scheme = item[1]
-		case "location":
-			h.Location = item[1]
-		default:
-			if strings.Contains(item[0], "header") {
-				headerChange += strings.Replace(item[0], "header_", "", -1) + ":" + item[1] + "\n"
-			}
-			h.HeaderChange = headerChange
-		}
-	}
-	return h
-}
-
-func dealHealth(s string) *file.Health {
-	h := &file.Health{}
-	for _, v := range splitStr(s) {
-		item := strings.Split(v, "=")
-		if len(item) == 0 {
-			continue
-		} else if len(item) == 1 {
-			item = append(item, "")
-		}
-		switch strings.TrimSpace(item[0]) {
-		case "health_check_timeout":
-			h.HealthCheckTimeout = common.GetIntNoErrByStr(item[1])
-		case "health_check_max_failed":
-			h.HealthMaxFail = common.GetIntNoErrByStr(item[1])
-		case "health_check_interval":
-			h.HealthCheckInterval = common.GetIntNoErrByStr(item[1])
-		case "health_http_url":
-			h.HttpHealthUrl = item[1]
-		case "health_check_type":
-			h.HealthCheckType = item[1]
-		case "health_check_target":
-			h.HealthCheckTarget = item[1]
-		}
-	}
-	return h
-}
+//
+//func dealHost(s string) *file.Host {
+//	h := &file.Host{}
+//	h.Target = new(file.Target)
+//	h.Scheme = "all"
+//	var headerChange string
+//	for _, v := range splitStr(s) {
+//		item := strings.Split(v, "=")
+//		if len(item) == 0 {
+//			continue
+//		} else if len(item) == 1 {
+//			item = append(item, "")
+//		}
+//		switch strings.TrimSpace(item[0]) {
+//		case "host":
+//			h.Host = item[1]
+//		case "target_addr":
+//			h.Target.TargetStr = strings.Replace(item[1], ",", "\n", -1)
+//		case "host_change":
+//			h.HostChange = item[1]
+//		case "scheme":
+//			h.Scheme = item[1]
+//		case "location":
+//			h.Location = item[1]
+//		default:
+//			if strings.Contains(item[0], "header") {
+//				headerChange += strings.Replace(item[0], "header_", "", -1) + ":" + item[1] + "\n"
+//			}
+//			h.HeaderChange = headerChange
+//		}
+//	}
+//	return h
+//}
+//
+//func dealHealth(s string) *file.Health {
+//	h := &file.Health{}
+//	for _, v := range splitStr(s) {
+//		item := strings.Split(v, "=")
+//		if len(item) == 0 {
+//			continue
+//		} else if len(item) == 1 {
+//			item = append(item, "")
+//		}
+//		switch strings.TrimSpace(item[0]) {
+//		case "health_check_timeout":
+//			h.HealthCheckTimeout = common.GetIntNoErrByStr(item[1])
+//		case "health_check_max_failed":
+//			h.HealthMaxFail = common.GetIntNoErrByStr(item[1])
+//		case "health_check_interval":
+//			h.HealthCheckInterval = common.GetIntNoErrByStr(item[1])
+//		case "health_http_url":
+//			h.HttpHealthUrl = item[1]
+//		case "health_check_type":
+//			h.HealthCheckType = item[1]
+//		case "health_check_target":
+//			h.HealthCheckTarget = item[1]
+//		}
+//	}
+//	return h
+//}
 
 func dealTunnel(s string) *file.Tunnel {
 	t := &file.Tunnel{}
@@ -244,19 +245,19 @@ func dealTunnel(s string) *file.Tunnel {
 			t.LocalPath = item[1]
 		case "strip_pre":
 			t.StripPre = item[1]
-		case "multi_account":
-			t.MultiAccount = &file.MultiAccount{}
-			if common.FileExists(item[1]) {
-				if b, err := common.ReadAllFromFile(item[1]); err != nil {
-					panic(err)
-				} else {
-					if content, err := common.ParseStr(string(b)); err != nil {
-						panic(err)
-					} else {
-						t.MultiAccount.AccountMap = dealMultiUser(content)
-					}
-				}
-			}
+			//case "multi_account":
+			//	t.MultiAccount = &file.MultiAccount{}
+			//	if common.FileExists(item[1]) {
+			//		if b, err := common.ReadAllFromFile(item[1]); err != nil {
+			//			panic(err)
+			//		} else {
+			//			if content, err := common.ParseStr(string(b)); err != nil {
+			//				panic(err)
+			//			} else {
+			//				t.MultiAccount.AccountMap = dealMultiUser(content)
+			//			}
+			//		}
+			//	}
 		}
 	}
 	return t

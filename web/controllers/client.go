@@ -51,8 +51,8 @@ func (s *ClientController) Add() {
 			Status:    true,
 			Remark:    s.getEscapeString("remark"),
 			Cnf: &file.Config{
-				U:        s.getEscapeString("u"),
-				P:        s.getEscapeString("p"),
+				User:     s.getEscapeString("u"),
+				Passwd:   s.getEscapeString("p"),
 				Compress: common.GetBoolByStr(s.getEscapeString("compress")),
 				Crypt:    s.GetBoolNoErr("crypt"),
 			},
@@ -127,8 +127,8 @@ func (s *ClientController) Edit() {
 				c.MaxTunnelNum = s.GetIntNoErr("max_tunnel")
 			}
 			c.Remark = s.getEscapeString("remark")
-			c.Cnf.U = s.getEscapeString("u")
-			c.Cnf.P = s.getEscapeString("p")
+			c.Cnf.User = s.getEscapeString("u")
+			c.Cnf.Passwd = s.getEscapeString("p")
 			c.Cnf.Compress = common.GetBoolByStr(s.getEscapeString("compress"))
 			c.Cnf.Crypt = s.GetBoolNoErr("crypt")
 			b, err := beego.AppConfig.Bool("allow_user_change_username")
@@ -191,7 +191,7 @@ func (s *ClientController) Del() {
 	if err := file.GetDb().DelClient(id); err != nil {
 		s.AjaxErr("delete error")
 	}
-	server.DelTunnelAndHostByClientId(id, false)
+	//server.DelTunnelAndHostByClientId(id, false)
 	server.DelClientConnect(id)
 	s.AjaxOk("delete success")
 }

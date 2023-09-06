@@ -7,7 +7,6 @@ import (
 	"net"
 	"os"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 	"xnps/lib/nps_mux"
@@ -90,71 +89,49 @@ func (s *Bridge) StartTunnel() error {
 	return nil
 }
 
-// 从客户端获取运行状况
-// get health information from client
-func (s *Bridge) GetHealthFromClient(id int, c *conn.Conn) {
-	for {
-		if info, status, err := c.GetHealthInfo(); err != nil {
-			break
-		} else if !status { //the status is true , return target to the targetArr
-			file.GetDb().JsonDb.Tasks.Range(func(key, value interface{}) bool {
-				v := value.(*file.Tunnel)
-				if v.Client.Id == id && v.Mode == "tcp" && strings.Contains(v.Target.TargetStr, info) {
-					v.Lock()
-					if v.Target.TargetArr == nil || (len(v.Target.TargetArr) == 0 && len(v.HealthRemoveArr) == 0) {
-						v.Target.TargetArr = common.TrimArr(strings.Split(v.Target.TargetStr, "\n"))
-					}
-					v.Target.TargetArr = common.RemoveArrVal(v.Target.TargetArr, info)
-					if v.HealthRemoveArr == nil {
-						v.HealthRemoveArr = make([]string, 0)
-					}
-					v.HealthRemoveArr = append(v.HealthRemoveArr, info)
-					v.Unlock()
-				}
-				return true
-			})
-			file.GetDb().JsonDb.Hosts.Range(func(key, value interface{}) bool {
-				v := value.(*file.Host)
-				if v.Client.Id == id && strings.Contains(v.Target.TargetStr, info) {
-					v.Lock()
-					if v.Target.TargetArr == nil || (len(v.Target.TargetArr) == 0 && len(v.HealthRemoveArr) == 0) {
-						v.Target.TargetArr = common.TrimArr(strings.Split(v.Target.TargetStr, "\n"))
-					}
-					v.Target.TargetArr = common.RemoveArrVal(v.Target.TargetArr, info)
-					if v.HealthRemoveArr == nil {
-						v.HealthRemoveArr = make([]string, 0)
-					}
-					v.HealthRemoveArr = append(v.HealthRemoveArr, info)
-					v.Unlock()
-				}
-				return true
-			})
-		} else { //the status is false,remove target from the targetArr
-			file.GetDb().JsonDb.Tasks.Range(func(key, value interface{}) bool {
-				v := value.(*file.Tunnel)
-				if v.Client.Id == id && v.Mode == "tcp" && common.IsArrContains(v.HealthRemoveArr, info) && !common.IsArrContains(v.Target.TargetArr, info) {
-					v.Lock()
-					v.Target.TargetArr = append(v.Target.TargetArr, info)
-					v.HealthRemoveArr = common.RemoveArrVal(v.HealthRemoveArr, info)
-					v.Unlock()
-				}
-				return true
-			})
-
-			file.GetDb().JsonDb.Hosts.Range(func(key, value interface{}) bool {
-				v := value.(*file.Host)
-				if v.Client.Id == id && common.IsArrContains(v.HealthRemoveArr, info) && !common.IsArrContains(v.Target.TargetArr, info) {
-					v.Lock()
-					v.Target.TargetArr = append(v.Target.TargetArr, info)
-					v.HealthRemoveArr = common.RemoveArrVal(v.HealthRemoveArr, info)
-					v.Unlock()
-				}
-				return true
-			})
-		}
-	}
-	s.DelClient(id)
-}
+//
+//// 从客户端获取运行状况
+//// get health information from client
+//func (s *Bridge) GetHealthFromClient(id int, c *conn.Conn) {
+//	for {
+//		logs.Info("health info")
+//		if info, status, err := c.GetHealthInfo(); err != nil {
+//			break
+//		} else if !status { //the status is true , return target to the targetArr
+//			file.GetDb().JsonDb.Tasks.Range(func(key, value interface{}) bool {
+//				v := value.(*file.Tunnel)
+//				if v.Client.Id == id && v.Mode == "tcp" && strings.Contains(v.Target.TargetStr, info) {
+//					v.Lock()
+//					if v.Target.TargetArr == nil || (len(v.Target.TargetArr) == 0 && len(v.HealthRemoveArr) == 0) {
+//						v.Target.TargetArr = common.TrimArr(strings.Split(v.Target.TargetStr, "\n"))
+//					}
+//					v.Target.TargetArr = common.RemoveArrVal(v.Target.TargetArr, info)
+//					if v.HealthRemoveArr == nil {
+//						v.HealthRemoveArr = make([]string, 0)
+//					}
+//					logs.Info(info)
+//					v.HealthRemoveArr = append(v.HealthRemoveArr, info)
+//					v.Unlock()
+//				}
+//				return true
+//			})
+//
+//		} else { //the status is false,remove target from the targetArr
+//			file.GetDb().JsonDb.Tasks.Range(func(key, value interface{}) bool {
+//				v := value.(*file.Tunnel)
+//				if v.Client.Id == id && v.Mode == "tcp" && common.IsArrContains(v.HealthRemoveArr, info) && !common.IsArrContains(v.Target.TargetArr, info) {
+//					v.Lock()
+//					v.Target.TargetArr = append(v.Target.TargetArr, info)
+//					v.HealthRemoveArr = common.RemoveArrVal(v.HealthRemoveArr, info)
+//					v.Unlock()
+//				}
+//				return true
+//			})
+//
+//		}
+//	}
+//	s.DelClient(id)
+//}
 
 // 验证失败，返回错误验证flag，并且关闭连接
 func (s *Bridge) verifyError(c *conn.Conn) {
@@ -255,7 +232,7 @@ func (s *Bridge) typeDeal(typeVal string, c *conn.Conn, id int, ver string) {
 			v.(*Client).signal = c
 			v.(*Client).Version = ver
 		}
-		go s.GetHealthFromClient(id, c)
+		//go s.GetHealthFromClient(id, c)
 		logs.Info("clientId %d connection succeeded, address:%s ", id, c.Conn.RemoteAddr())
 	//	TODO:隧道连接在这里
 	case common.WORK_CHAN:
@@ -416,13 +393,6 @@ loop:
 				if err != nil {
 					break loop
 				}
-				file.GetDb().JsonDb.Hosts.Range(func(key, value interface{}) bool {
-					v := value.(*file.Host)
-					if v.Client.Id == id {
-						str += v.Remark + common.CONN_DATA_SEQ
-					}
-					return true
-				})
 				file.GetDb().JsonDb.Tasks.Range(func(key, value interface{}) bool {
 					v := value.(*file.Tunnel)
 					//if _, ok := s.runList[v.Id]; ok && v.Client.Id == id {
@@ -450,29 +420,6 @@ loop:
 				c.Write([]byte(client.VerifyKey))
 				s.Client.Store(client.Id, NewClient(nil, nil, nil, ""))
 			}
-		case common.NEW_HOST:
-			h, err := c.GetHostInfo()
-			if err != nil {
-				fail = true
-				c.WriteAddFail()
-				break loop
-			}
-			h.Client = client
-			if h.Location == "" {
-				h.Location = "/"
-			}
-			if !client.HasHost(h) {
-				if file.GetDb().IsHostExist(h) {
-					fail = true
-					c.WriteAddFail()
-					break loop
-				} else {
-					file.GetDb().NewHost(h)
-					c.WriteAddOk()
-				}
-			} else {
-				c.WriteAddOk()
-			}
 		case common.NEW_TASK:
 			if t, err := c.GetTaskInfo(); err != nil {
 				fail = true
@@ -480,6 +427,11 @@ loop:
 				break loop
 			} else {
 				ports := common.GetPorts(t.Ports)
+				//logs.Info(ports)
+				if len(ports) == 0 {
+					break loop
+				}
+				logs.Info(t.Target.TargetStr)
 				targets := common.GetPorts(t.Target.TargetStr)
 				if len(ports) > 1 && (t.Mode == "tcp" || t.Mode == "udp") && (len(ports) != len(targets)) {
 					fail = true

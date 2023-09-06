@@ -76,9 +76,9 @@ retry:
 	//start a channel connection
 	go s.newChan()
 	//start health check if the it's open
-	if s.cnf != nil && len(s.cnf.Healths) > 0 {
-		go heathCheck(s.cnf.Healths, s.signal)
-	}
+	//if s.cnf != nil && len(s.cnf.Healths) > 0 {
+	//	go heathCheck(s.cnf.Healths, s.signal)
+	//}
 	NowStatus = 1
 	//msg connection, eg udp
 	s.handleMain()

@@ -21,15 +21,6 @@ type connGroup struct {
 	remote string
 }
 
-//func newConnGroup(dst, src io.ReadWriteCloser, wg *sync.WaitGroup, n *int64) connGroup {
-//	return connGroup{
-//		src: src,
-//		dst: dst,
-//		wg:  wg,
-//		n:   n,
-//	}
-//}
-
 func newConnGroup(dst, src io.ReadWriteCloser, wg *sync.WaitGroup, n *int64, flow *file.Flow, task *file.Tunnel, remote string) connGroup {
 	return connGroup{
 		src:    src,

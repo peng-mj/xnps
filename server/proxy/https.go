@@ -14,7 +14,6 @@ import (
 	"xnps/lib/common"
 	"xnps/lib/conn"
 	"xnps/lib/crypt"
-	"xnps/lib/file"
 )
 
 type HttpsServer struct {
@@ -41,7 +40,7 @@ func (https *HttpsServer) Start() error {
 	}
 	if b, err := beego.AppConfig.Bool("https_just_proxy"); err == nil && b {
 		conn.Accept(https.listener, func(c net.Conn) {
-			https.handleHttps(c)
+			//https.handleHttpsHost(c)
 		})
 	} else {
 		//start the default listener
@@ -62,27 +61,27 @@ func (https *HttpsServer) Start() error {
 			if v, ok := https.httpsListenerMap.Load(serverName); ok {
 				l = v.(*HttpsListener)
 			} else {
-				r := buildHttpsRequest(serverName)
-				if host, err := file.GetDb().GetInfoByHost(serverName, r); err != nil {
-					c.Close()
-					logs.Notice("the url %s can't be parsed!,remote addr %s", serverName, c.RemoteAddr().String())
-					return
-				} else {
-					if !common.FileExists(host.CertFilePath) || !common.FileExists(host.KeyFilePath) {
-						//if the host cert file or key file is not set ,use the default file
-						if v, ok := https.httpsListenerMap.Load("default"); ok {
-							l = v.(*HttpsListener)
-						} else {
-							c.Close()
-							logs.Error("the key %s cert %s file is not exist", host.KeyFilePath, host.CertFilePath)
-							return
-						}
-					} else {
-						l = NewHttpsListener(https.listener)
-						https.NewHttps(l, host.CertFilePath, host.KeyFilePath)
-						https.httpsListenerMap.Store(serverName, l)
-					}
-				}
+				//r := buildHttpsRequest(serverName)
+				//if host, err := file.GetDb().GetInfoByHost(serverName, r); err != nil {
+				//	c.Close()
+				//	logs.Notice("the url %s can't be parsed!,remote addr %s", serverName, c.RemoteAddr().String())
+				//	return
+				//} else {
+				//	if !common.FileExists(host.CertFilePath) || !common.FileExists(host.KeyFilePath) {
+				//		//if the host cert file or key file is not set ,use the default file
+				//		if v, ok := https.httpsListenerMap.Load("default"); ok {
+				//			l = v.(*HttpsListener)
+				//		} else {
+				//			c.Close()
+				//			logs.Error("the key %s cert %s file is not exist", host.KeyFilePath, host.CertFilePath)
+				//			return
+				//		}
+				//	} else {
+				//		l = NewHttpsListener(https.listener)
+				//		https.NewHttps(l, host.CertFilePath, host.KeyFilePath)
+				//		https.httpsListenerMap.Store(serverName, l)
+				//	}
+				//}
 			}
 			acceptConn := conn.NewConn(c)
 			acceptConn.Rb = rb
@@ -104,34 +103,35 @@ func (https *HttpsServer) NewHttps(l net.Listener, certFile string, keyFile stri
 	}()
 }
 
-// handle the https which is just proxy to other client
-func (https *HttpsServer) handleHttps(c net.Conn) {
-	hostName, rb := GetServerNameFromClientHello(c)
-	var targetAddr string
-	r := buildHttpsRequest(hostName)
-	var host *file.Host
-	var err error
-	if host, err = file.GetDb().GetInfoByHost(hostName, r); err != nil {
-		c.Close()
-		logs.Notice("the url %s can't be parsed!", hostName)
-		return
-	}
-	if err := https.CheckFlowAndConnNum(host.Client); err != nil {
-		logs.Warn("client id %d, host id %d, error %s, when https connection", host.Client.Id, host.Id, err.Error())
-		c.Close()
-		return
-	}
-	defer host.Client.AddConn()
-	if err = https.auth(r, conn.NewConn(c), host.Client.Cnf.U, host.Client.Cnf.P); err != nil {
-		logs.Warn("auth error", err, r.RemoteAddr)
-		return
-	}
-	if targetAddr, err = host.Target.GetRandomTarget(); err != nil {
-		logs.Warn(err.Error())
-	}
-	logs.Trace("new https connection,clientId %d,host %s,remote address %s", host.Client.Id, r.Host, c.RemoteAddr().String())
-	https.DealClient(conn.NewConn(c), host.Client, targetAddr, rb, common.CONN_TCP, nil, host.Flow, host.Target.LocalProxy, nil)
-}
+//
+//// handle the https which is just proxy to other client
+//func (https *HttpsServer) handleHttpsHost(c net.Conn) {
+//	hostName, rb := GetServerNameFromClientHello(c)
+//	var targetAddr string
+//	r := buildHttpsRequest(hostName)
+//	var host *file.Host
+//	var err error
+//	if host, err = file.GetDb().GetInfoByHost(hostName, r); err != nil {
+//		c.Close()
+//		logs.Notice("the url %s can't be parsed!", hostName)
+//		return
+//	}
+//	if err := https.CheckFlowAndConnNum(host.Client); err != nil {
+//		logs.Warn("client id %d, host id %d, error %s, when https connection", host.Client.Id, host.Id, err.Error())
+//		c.Close()
+//		return
+//	}
+//	defer host.Client.AddConn()
+//	if err = https.auth(r, conn.NewConn(c), host.Client.Cnf.User, host.Client.Cnf.Passwd); err != nil {
+//		logs.Warn("auth error", err, r.RemoteAddr)
+//		return
+//	}
+//	if targetAddr, err = host.Target.GetRandomTarget(); err != nil {
+//		logs.Warn(err.Error())
+//	}
+//	logs.Trace("new https connection,clientId %d,host %s,remote address %s", host.Client.Id, r.Host, c.RemoteAddr().String())
+//	https.DealClient(conn.NewConn(c), host.Client, targetAddr, rb, common.CONN_TCP, nil, host.Flow, host.Target.LocalProxy, nil)
+//}
 
 type HttpsListener struct {
 	acceptConn     chan *conn.Conn
