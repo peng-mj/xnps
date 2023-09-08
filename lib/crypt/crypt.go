@@ -5,6 +5,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/md5"
+	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"github.com/oklog/ulid/v2"
@@ -57,7 +58,13 @@ func PKCS5UnPadding(origData []byte) (error, []byte) {
 	return nil, origData[:(length - unpadding)]
 }
 
-// Generate 32-bit MD5 strings
+// Generate 256-bit sha256 strings
+func Sha256(s string) string {
+	sha := sha256.New()
+	sha.Write([]byte(s))
+	return hex.EncodeToString(sha.Sum(nil))
+}
+
 func Md5(s string) string {
 	h := md5.New()
 	h.Write([]byte(s))
