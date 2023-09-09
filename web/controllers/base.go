@@ -1,14 +1,12 @@
 package controllers
 
 import (
+	"github.com/astaxie/beego"
 	"html"
 	"math"
 	"strconv"
 	"strings"
 	"time"
-	"xnps/lib/database/models"
-
-	"github.com/astaxie/beego"
 	"xnps/lib/common"
 	"xnps/lib/crypt"
 	"xnps/lib/database"
@@ -38,7 +36,7 @@ func (s *BaseController) Prepare() {
 		configKey = crypt.GenerateRandomVKey()
 	}
 	timeNowUnix := time.Now().Unix()
-	if !(md5Key != "" && (math.Abs(float64(timeNowUnix-int64(timestamp))) <= 20) && (crypt.Md5(configKey+strconv.Itoa(timestamp)) == md5Key)) {
+	if !(md5Key != "" && (math.Abs(float64(timeNowUnix-int64(timestamp))) <= 20) && (crypt.Sha256(configKey+strconv.FormatInt(timestamp, 10)) == md5Key)) {
 		if s.GetSession("auth") != true {
 			s.Redirect(beego.AppConfig.String("web_base_url")+"/login/index", 302)
 		}
@@ -105,13 +103,16 @@ func (s *BaseController) getEscapeString(key string) string {
 
 // TODO：查看什么意思
 // 去掉没有err返回值的int
-func (s *BaseController) GetIntNoErr(key string, def ...int) int {
+func (s *BaseController) GetIntNoErr(key string, def ...int64) int64 {
 	strv := s.Ctx.Input.Query(key)
 	if len(strv) == 0 && len(def) > 0 {
 		return def[0]
 	}
-	val, _ := strconv.Atoi(strv)
-	return val
+	if val, err := strconv.ParseInt(strv, 10, 64); err != nil {
+		return def[0]
+	} else {
+		return val
+	}
 }
 
 // 获取去掉错误的bool值
@@ -132,7 +133,7 @@ func (s *BaseController) AjaxOk(str string) {
 }
 
 // ajax正确返回
-func (s *BaseController) AjaxOkWithId(str string, id int) {
+func (s *BaseController) AjaxOkWithId(str string, id int64) {
 	s.Data["json"] = ajaxWithId(str, 1, id)
 	s.ServeJSON()
 	s.StopRun()
@@ -154,7 +155,7 @@ func ajax(str string, status int) map[string]interface{} {
 }
 
 // 组装ajax
-func ajaxWithId(str string, status int, id int) map[string]interface{} {
+func ajaxWithId(str string, status int, id int64) map[string]interface{} {
 	json := make(map[string]interface{})
 	json["status"] = status
 	json["msg"] = str
@@ -180,7 +181,7 @@ func (s *BaseController) AjaxTable(list interface{}, cnt int, recordsTotal int, 
 }
 
 // ajax table参数
-func (s *BaseController) GetAjaxParams() (start, limit int) {
+func (s *BaseController) GetAjaxParams() (start, limit int64) {
 	return s.GetIntNoErr("offset"), s.GetIntNoErr("limit")
 }
 
@@ -199,7 +200,7 @@ func (s *BaseController) CheckUserAuth() {
 			return
 		}
 		if id := s.GetIntNoErr("id"); id != 0 {
-			if id != s.GetSession("clientId").(int) {
+			if id != s.GetSession("clientId").(int64) {
 				s.StopRun()
 				return
 			}
@@ -215,11 +216,15 @@ func (s *BaseController) CheckUserAuth() {
 				//	}
 				//}
 			} else {
-				if v, ok := database.GetDb().JsonDb.Tasks.Load(id); ok {
-					if v.(*models.Tunnel).Client.Id == s.GetSession("clientId").(int64) {
-						belong = true
-					}
-				}
+				belong = database.GetDb().CheckTunnelClient(s.GetSession("clientId").(int64), id)
+				//这个是通过通道获取clientId然后和接收到的参数对比，看是否通道对应的ID是否是收到的客户端ID
+
+				//if v, ok := database.GetDb().JsonDb.Tasks.Load(id); ok {
+				//	if v.(*models.Tunnel).Client.Id == s.GetSession("clientId").(int64) {
+				//		belong = true
+				//	}
+				//}
+
 			}
 			if !belong {
 				s.StopRun()

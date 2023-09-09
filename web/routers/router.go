@@ -6,9 +6,9 @@ import (
 )
 
 func Init() {
-	web_base_url := beego.AppConfig.String("web_base_url")
-	if len(web_base_url) > 0 {
-		ns := beego.NewNamespace(web_base_url,
+	webBaseUrl := beego.AppConfig.String("web_base_url")
+	if len(webBaseUrl) > 0 {
+		ns := beego.NewNamespace(webBaseUrl,
 			beego.NSRouter("/", &controllers.IndexController{}, "*:Index"),
 			beego.NSAutoRouter(&controllers.IndexController{}),
 			beego.NSAutoRouter(&controllers.LoginController{}),

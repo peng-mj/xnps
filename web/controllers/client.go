@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"github.com/astaxie/beego"
-	"strings"
 	"xnps/lib/common"
 	"xnps/lib/database"
 	"xnps/lib/database/models"
@@ -46,42 +45,47 @@ func (s *ClientController) Add() {
 		s.SetInfo("add client")
 		s.display()
 	} else {
-		id := database.GetDb().JsonDb.GetClientId()
+		//id := database.GetDb().JsonDb.GetClientId()
 		t := &models.Client{
 			VerifyKey: s.getEscapeString("vkey"),
-			Id:        id,
-			Status:    true,
-			Remark:    s.getEscapeString("remark"),
-			Cnf: &models.Config{
-				User:     s.getEscapeString("u"),
-				Passwd:   s.getEscapeString("p"),
-				Compress: common.GetBoolByStr(s.getEscapeString("compress")),
-				Crypt:    s.GetBoolNoErr("crypt"),
-			},
+			//Id:        id,
+			Valid:  true,
+			Remark: s.getEscapeString("remark"),
+			//HttpUser:   s.getEscapeString("u"),
+			//HttpPasswd: s.getEscapeString("p"),
+			//Cnf: &models.Config{
+			//	User:     s.getEscapeString("u"),
+			//	Passwd:   s.getEscapeString("p"),
+			//	Compress: common.GetBoolByStr(s.getEscapeString("compress")),
+			//	Crypt:    s.GetBoolNoErr("crypt"),
+			//},
 			AllowUseConfigFile: s.GetBoolNoErr("config_conn_allow"),
-			RateLimit:          s.GetIntNoErr("rate_limit"),
-			MaxConn:            s.GetIntNoErr("max_conn"),
-			WebUser:            s.getEscapeString("web_username"),
-			WebPasswd:          s.getEscapeString("web_password"),
-			MaxTunnelNum:       s.GetIntNoErr("max_tunnel"),
+			RateLimit:          int(s.GetIntNoErr("rate_limit")),
+			MaxConn:            int(s.GetIntNoErr("max_conn")),
+			Compress:           common.GetBoolByStr(s.getEscapeString("compress")),
+			Crypt:              s.GetBoolNoErr("crypt"),
+
+			HttpUser:     s.getEscapeString("web_username"),
+			HttpPasswd:   s.getEscapeString("web_password"),
+			MaxTunnelNum: int(s.GetIntNoErr("max_tunnel")),
 			Flow: &models.Flow{
 				ExportFlow: 0,
 				InletFlow:  0,
 				FlowLimit:  int64(s.GetIntNoErr("flow_limit")),
 			},
-			BlackIpList: RemoveRepeatedElement(strings.Split(s.getEscapeString("blackiplist"), "\r\n")),
+			//BlackIpList: RemoveRepeatedElement(strings.Split(s.getEscapeString("blackiplist"), "\r\n")),
 		}
 		if err := database.GetDb().NewClient(t); err != nil {
 			s.AjaxErr(err.Error())
 		}
-		s.AjaxOkWithId("add success", id)
+		s.AjaxOkWithId("add success", t.Id)
 	}
 }
 func (s *ClientController) GetClient() {
 	if s.Ctx.Request.Method == "POST" {
 		id := s.GetIntNoErr("id")
 		data := make(map[string]interface{})
-		if c, err := database.GetDb().GetClient(id); err != nil {
+		if c, err := database.GetDb().GetClientById(id); err != nil {
 			data["code"] = 0
 		} else {
 			data["code"] = 1
@@ -97,16 +101,17 @@ func (s *ClientController) Edit() {
 	id := s.GetIntNoErr("id")
 	if s.Ctx.Request.Method == "GET" {
 		s.Data["menu"] = "client"
-		if c, err := database.GetDb().GetClient(id); err != nil {
+		if c, err := database.GetDb().GetClientById(id); err != nil {
 			s.error()
 		} else {
 			s.Data["c"] = c
-			s.Data["BlackIpList"] = strings.Join(c.BlackIpList, "\r\n")
+			//s.Data["BlackIpList"] = strings.Join(c.BlackIpList, "\r\n")
+			//s.Data["BlackIpList"] = strings.Join(c.BlackIpList, "\r\n")
 		}
 		s.SetInfo("edit client")
 		s.display()
 	} else {
-		if c, err := database.GetDb().GetClient(id); err != nil {
+		if c, err := database.GetDb().GetClientById(id); err != nil {
 			s.error()
 			s.AjaxErr("client ID not found")
 			return
@@ -124,20 +129,20 @@ func (s *ClientController) Edit() {
 				}
 				c.VerifyKey = s.getEscapeString("vkey")
 				c.Flow.FlowLimit = int64(s.GetIntNoErr("flow_limit"))
-				c.RateLimit = s.GetIntNoErr("rate_limit")
-				c.MaxConn = int32(s.GetIntNoErr("max_conn"))
-				c.MaxTunnelNum = s.GetIntNoErr("max_tunnel")
+				c.RateLimit = int(s.GetIntNoErr("rate_limit"))
+				c.MaxConn = int(int32(s.GetIntNoErr("max_conn")))
+				c.MaxTunnelNum = int(s.GetIntNoErr("max_tunnel"))
 			}
 			c.Remark = s.getEscapeString("remark")
-			c.Cnf.User = s.getEscapeString("u")
-			c.Cnf.Passwd = s.getEscapeString("p")
-			c.Cnf.Compress = common.GetBoolByStr(s.getEscapeString("compress"))
-			c.Cnf.Crypt = s.GetBoolNoErr("crypt")
+			c.HttpUser = s.getEscapeString("u")
+			c.HttpPasswd = s.getEscapeString("p")
+			c.Compress = common.GetBoolByStr(s.getEscapeString("compress"))
+			c.Crypt = s.GetBoolNoErr("crypt")
 			b, err := beego.AppConfig.Bool("allow_user_change_username")
 			if s.GetSession("isAdmin").(bool) || (err == nil && b) {
-				c.WebUser = s.getEscapeString("web_username")
+				c.HttpUser = s.getEscapeString("web_username")
 			}
-			c.WebPasswd = s.getEscapeString("web_password")
+			c.HttpPasswd = s.getEscapeString("web_password")
 			c.AllowUseConfigFile = s.GetBoolNoErr("config_conn_allow")
 			if c.Rate != nil {
 				c.Rate.Stop()
@@ -149,9 +154,9 @@ func (s *ClientController) Edit() {
 				c.Rate = rate.NewRate(int64(2 << 23))
 				c.Rate.Start()
 			}
-
-			c.BlackIpList = RemoveRepeatedElement(strings.Split(s.getEscapeString("blackiplist"), "\r\n"))
-			database.GetDb().JsonDb.StoreClientsToJsonFile()
+			//TODO:黑名单管理需要重构
+			//c.BlackIpList = RemoveRepeatedElement(strings.Split(s.getEscapeString("blackiplist"), "\r\n"))
+			database.GetDb().UpdateClientById(c, c.Id)
 		}
 		s.AjaxOk("save success")
 	}
@@ -177,9 +182,9 @@ func RemoveRepeatedElement(arr []string) (newArr []string) {
 // 更改状态
 func (s *ClientController) ChangeStatus() {
 	id := s.GetIntNoErr("id")
-	if client, err := database.GetDb().GetClient(id); err == nil {
-		client.Status = s.GetBoolNoErr("status")
-		if client.Status == false {
+	if client, err := database.GetDb().GetClientById(id); err == nil {
+		client.Valid = s.GetBoolNoErr("status")
+		if client.Valid == false {
 			server.DelClientConnect(client.Id)
 		}
 		s.AjaxOk("modified success")
