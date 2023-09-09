@@ -223,7 +223,7 @@ func run() {
 		localServer.Target = *target
 		localServer.Port = *localPort
 		commonConfig.Client = new(models.Client)
-		commonConfig.Client.Cnf = new(models.Config)
+		//commonConfig.Client.Cnf = new(models.Config)
 		go client.StartLocalServer(localServer, commonConfig)
 		return
 	}

@@ -158,20 +158,21 @@ func (s *Bridge) clientProcess(c *conn.Conn) {
 		return
 	}
 	//version get
-	var vs []byte
+	var ver []byte
 	var err error
-	if vs, err = c.GetShortLenContent(); err != nil {
+	if ver, err = c.GetShortLenContent(); err != nil {
 		logs.Info("get client %s version error", err.Error())
 		c.Close()
 		return
 	}
 	//write server version to client
-	c.Write([]byte(crypt.Md5(version.GetCoreVersion())))
+	c.Write([]byte(crypt.Sha256(version.GetCoreVersion())))
 	c.SetReadDeadlineBySecond(5)
 	var buf []byte
 	//get vKey from client
-	//TODO：这里其实只验证了前32位
-	if buf, err = c.GetShortContent(32); err != nil {
+	//如为md5那么下面数字为32
+	//如为sha256那么下面的数字为64
+	if buf, err = c.GetShortContent(64); err != nil {
 		c.Close()
 		return
 	}
@@ -187,7 +188,7 @@ func (s *Bridge) clientProcess(c *conn.Conn) {
 	}
 	//TODO:这个flag类型，有点不懂
 	if flag, err := c.ReadFlag(); err == nil {
-		s.typeDeal(flag, c, id, string(vs))
+		s.typeDeal(flag, c, id, string(ver))
 	} else {
 		logs.Warn(err, flag)
 	}
@@ -203,7 +204,7 @@ func (s *Bridge) DelClient(id int64) {
 		if database.GetDb().IsPubClient(id) {
 			return
 		}
-		if c, err := database.GetDb().GetClient(id); err == nil {
+		if c, err := database.GetDb().GetClientById(id); err == nil {
 			s.CloseClient <- c.Id
 		}
 	}
@@ -243,7 +244,7 @@ func (s *Bridge) typeDeal(typeVal string, c *conn.Conn, id int64, ver string) {
 		}
 
 	case common.WORK_CONFIG:
-		client, err := database.GetDb().GetClient(id)
+		client, err := database.GetDb().GetClientById(id)
 		if err != nil || (!isPub && !client.AllowUseConfigFile) {
 			c.Close()
 			return
@@ -253,8 +254,8 @@ func (s *Bridge) typeDeal(typeVal string, c *conn.Conn, id int64, ver string) {
 	case common.WORK_REGISTER:
 		go s.register(c)
 	case common.WORK_SECRET:
-		if b, err := c.GetShortContent(32); err == nil {
-			s.SecretChan <- conn.NewSecret(string(b), c)
+		if passwdBytes, err := c.GetShortContent(64); err == nil {
+			s.SecretChan <- conn.NewSecret(string(passwdBytes), c)
 		} else {
 			logs.Error("secret error, failed to match the key successfully")
 		}
@@ -265,7 +266,7 @@ func (s *Bridge) typeDeal(typeVal string, c *conn.Conn, id int64, ver string) {
 		}
 	case common.WORK_P2P:
 		//read md5 secret
-		if b, err := c.GetShortContent(32); err != nil {
+		if b, err := c.GetShortContent(64); err != nil {
 			logs.Error("p2p error,", err.Error())
 		} else if t := database.GetDb().GetTaskByMd5Password(string(b)); t == nil {
 			logs.Error("p2p error, failed to match the key successfully")
@@ -299,10 +300,10 @@ func (s *Bridge) register(c *conn.Conn) {
 	}
 }
 
-func (s *Bridge) SendLinkInfo(clientId int64, link *conn.Link, t *models.Tunnel) (target net.Conn, err error) {
+func (s *Bridge) SendLinkInfo(clientId int64, link *conn.Link, t *models.Tunnel) (targetConn net.Conn, err error) {
 	//if the proxy type is local
 	if link.LocalProxy {
-		target, err = net.Dial("tcp", link.Host)
+		targetConn, err = net.Dial("tcp", link.Host)
 		return
 	}
 	if v, ok := s.Client.Load(clientId); ok {
@@ -318,7 +319,7 @@ func (s *Bridge) SendLinkInfo(clientId int64, link *conn.Link, t *models.Tunnel)
 			}
 		}
 		var tunnel *nps_mux.Mux
-		if t != nil && t.Mode == "file" {
+		if t != nil && t.Mode == "file" { //文件代理
 			tunnel = v.(*Client).file
 		} else {
 			tunnel = v.(*Client).tunnel
@@ -327,7 +328,7 @@ func (s *Bridge) SendLinkInfo(clientId int64, link *conn.Link, t *models.Tunnel)
 			err = errors.New("the client connect error")
 			return
 		}
-		if target, err = tunnel.NewConn(); err != nil {
+		if targetConn, err = tunnel.NewConn(); err != nil {
 			return
 		}
 		if t != nil && t.Mode == "file" {
@@ -336,8 +337,8 @@ func (s *Bridge) SendLinkInfo(clientId int64, link *conn.Link, t *models.Tunnel)
 			link.Compress = false
 			return
 		}
-		if _, err = conn.NewConn(target).SendInfo(link, ""); err != nil {
-			logs.Info("new connect error ,the target %s refuse to connect", link.Host)
+		if _, err = conn.NewConn(targetConn).SendInfo(link, ""); err != nil {
+			logs.Info("new connect error ,the targetConn %s refuse to connect", link.Host)
 			return
 		}
 	} else {
@@ -375,6 +376,8 @@ func (s *Bridge) ping() {
 	}
 }
 
+// TODO:去掉这个功能
+// 从设备的文件启动
 // get config and add task from client config
 func (s *Bridge) getConfig(c *conn.Conn, isPub bool, client *models.Client) {
 	var fail bool
@@ -386,7 +389,7 @@ loop:
 		}
 		switch flag {
 		case common.WORK_STATUS:
-			if b, err := c.GetShortContent(32); err != nil {
+			if b, err := c.GetShortContent(64); err != nil {
 				break loop
 			} else {
 				var str string
@@ -394,16 +397,24 @@ loop:
 				if err != nil {
 					break loop
 				}
-				database.GetDb().JsonDb.Tasks.Range(func(key, value interface{}) bool {
-					v := value.(*models.Tunnel)
-					//if _, ok := s.runList[v.Id]; ok && v.Client.Id == id {
-					if _, ok := s.runList.Load(v.Id); ok && v.Client.Id == id {
-						str += v.Remark + common.CONN_DATA_SEQ
-					}
-					return true
-				})
-				binary.Write(c, binary.LittleEndian, int32(len([]byte(str))))
-				binary.Write(c, binary.LittleEndian, []byte(str))
+				tunnelList, _ := database.GetDb().GetTunnelListByClientId(0, id)
+				//TODO:理解，为什么这么做？标记+分割号
+				//应该是告诉客户端，将要创建的通道
+				for i := range tunnelList {
+					str += tunnelList[i].Remark + common.CONN_DATA_SEQ
+				}
+
+				//这里为什么要写到连接里边
+				//database.GetDb().JsonDb.Tasks.Range(func(key, value interface{}) bool {
+				//	tun := value.(*models.Tunnel)
+				//	//if _, ok := s.runList[v.Id]; ok && v.Client.Id == id {
+				//	if _, ok := s.runList.Load(tun.Id); ok && tun.Client.Id == id {
+				//		str += tun.Remark + common.CONN_DATA_SEQ
+				//	}
+				//	return true
+				//})
+				_ = binary.Write(c, binary.LittleEndian, int32(len([]byte(str))))
+				_ = binary.Write(c, binary.LittleEndian, []byte(str))
 			}
 		case common.NEW_CONF:
 			var err error
@@ -418,27 +429,27 @@ loop:
 					break loop
 				}
 				c.WriteAddOk()
-				c.Write([]byte(client.VerifyKey))
+				c.Write([]byte(client.VerifyKey)) //这是为什么？还要向客户端写密钥？
 				s.Client.Store(client.Id, NewClient(nil, nil, nil, ""))
 			}
 		case common.NEW_TASK:
-			if t, err := c.GetTaskInfo(); err != nil {
+			if tun, err := c.GetTunnelInfo(); err != nil {
 				fail = true
 				c.WriteAddFail()
 				break loop
 			} else {
-				ports := common.GetPorts(t.Ports)
+				ports := common.GetPorts(tun.Ports)
 				//logs.Info(ports)
 				if len(ports) == 0 {
 					break loop
 				}
-				logs.Info(t.Target.TargetStr)
-				targets := common.GetPorts(t.Target.TargetStr)
-				if len(ports) > 1 && (t.Mode == "tcp" || t.Mode == "udp") && (len(ports) != len(targets)) {
+				logs.Info(tun.Target.TargetStr)
+				targets := common.GetPorts(tun.Target.TargetStr)
+				if len(ports) > 1 && (tun.Mode == "tcp" || tun.Mode == "udp") && (len(ports) != len(targets)) {
 					fail = true
 					c.WriteAddFail()
 					break loop
-				} else if t.Mode == "secret" || t.Mode == "p2p" {
+				} else if tun.Mode == "secret" || tun.Mode == "p2p" { //限定p2p、secret才能使用
 					ports = append(ports, 0)
 				}
 				if len(ports) == 0 {
@@ -446,45 +457,47 @@ loop:
 					c.WriteAddFail()
 					break loop
 				}
-				for i := 0; i < len(ports); i++ {
-					tl := new(models.Tunnel)
-					tl.Mode = t.Mode
-					tl.Port = ports[i]
-					tl.ServerIp = t.ServerIp
+				for i := 0; i < len(ports); i++ { //当端口为多个的时候，循环创建多个
+					tunnel := new(models.Tunnel)
+					tunnel.Mode = tun.Mode
+					tunnel.ServerPort = ports[i]
+					tunnel.ServerIp = tun.ServerIp
 					if len(ports) == 1 {
-						tl.Target = t.Target
-						tl.Remark = t.Remark
+						tunnel.Target = tun.Target
+						tunnel.Remark = tun.Remark
 					} else {
-						tl.Remark = t.Remark + "_" + strconv.Itoa(tl.Port)
-						tl.Target = new(models.Target)
-						if t.TargetAddr != "" {
-							tl.Target.TargetStr = t.TargetAddr + ":" + strconv.Itoa(targets[i])
+						tunnel.Remark = tun.Remark + "_" + strconv.Itoa(tunnel.ServerPort)
+						tunnel.Target = new(models.Target)
+						if tun.TargetAddr != "" {
+							tunnel.Target.TargetStr = tun.TargetAddr + ":" + strconv.Itoa(targets[i])
 						} else {
-							tl.Target.TargetStr = strconv.Itoa(targets[i])
+							tunnel.Target.TargetStr = strconv.Itoa(targets[i])
 						}
 					}
-					tl.Id = database.GetDb().JsonDb.GetTaskId()
-					tl.Status = true
-					tl.Flow = new(models.Flow)
-					tl.NoStore = true
-					tl.Client = client
-					tl.Password = t.Password
-					tl.LocalPath = t.LocalPath
-					tl.StripPre = t.StripPre
-					tl.MultiAccount = t.MultiAccount
-					if !client.HasTunnel(tl) {
-						if err := database.GetDb().NewTask(tl); err != nil {
+					//获取新的ID
+					//tunnel.Id = database.GetDb().JsonDb.GetTaskId()
+					tunnel.Status = true
+					tunnel.Flow = new(models.Flow)
+					tunnel.NoStore = true
+					tunnel.Client = client
+					tunnel.Password = tun.Password
+					tunnel.LocalPath = tun.LocalPath
+					tunnel.StripPre = tun.StripPre
+					tunnel.MultiAccount = tun.MultiAccount
+					//检查某客户端是否有存在的通道
+					if !database.GetDb().HasTunnel(client.Id, tunnel) {
+						if err := database.GetDb().NewTask(tunnel); err != nil {
 							logs.Notice("Add task error ", err.Error())
 							fail = true
 							c.WriteAddFail()
 							break loop
 						}
-						if b := tool.TestServerPort(tl.Port, tl.Mode); !b && t.Mode != "secret" && t.Mode != "p2p" {
+						if b := tool.TestServerPort(tunnel.ServerPort, tunnel.Mode); !b && tun.Mode != "secret" && tun.Mode != "p2p" {
 							fail = true
 							c.WriteAddFail()
 							break loop
 						} else {
-							s.OpenTask <- tl
+							s.OpenTask <- tunnel
 						}
 					}
 					c.WriteAddOk()

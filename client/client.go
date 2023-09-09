@@ -74,7 +74,7 @@ retry:
 	go s.ping()
 	s.signal = c
 	//start a channel connection
-	go s.newChan()
+	go s.newChannel()
 	//start health check if the it's open
 	//if s.cnf != nil && len(s.cnf.Healths) > 0 {
 	//	go heathCheck(s.cnf.Healths, s.signal)
@@ -101,7 +101,7 @@ func (s *TRPClient) handleMain() {
 			} else if pwd, err := s.signal.GetShortLenContent(); err == nil {
 				var localAddr string
 				//The local port remains unchanged for a certain period of time
-				if v, ok := s.p2pAddr[crypt.Md5(string(pwd)+strconv.Itoa(int(time.Now().Unix()/100)))]; !ok {
+				if v, ok := s.p2pAddr[crypt.Sha256(string(pwd)+strconv.Itoa(int(time.Now().Unix()/100)))]; !ok {
 					tmpConn, err := common.GetLocalUdpAddr()
 					if err != nil {
 						logs.Error(err)
@@ -144,21 +144,23 @@ func (s *TRPClient) newUdpConn(localAddr, rAddr string, md5Password string) {
 			logs.Trace("successful connection with client ,address %s", udpTunnel.RemoteAddr().String())
 			//read link info from remote
 			conn.Accept(nps_mux.NewMux(udpTunnel, s.bridgeConnType, s.disconnectTime), func(c net.Conn) {
-				go s.handleChan(c)
+				go s.handleChannel(c)
 			})
 			break
 		}
 	}
 }
 
+// 创建新的隧道连接，也需要验证身份
 // pmux tunnel
-func (s *TRPClient) newChan() {
+func (s *TRPClient) newChannel() {
 	tunnel, err := NewConn(s.bridgeConnType, s.vKey, s.svrAddr, common.WORK_CHAN, s.proxyUrl)
 	if err != nil {
 		logs.Error("connect to ", s.svrAddr, "error:", err)
 		return
 	}
 	s.tunnel = nps_mux.NewMux(tunnel.Conn, s.bridgeConnType, s.disconnectTime)
+	//持续接收来自服务端的连接
 	for {
 		src, err := s.tunnel.Accept()
 		if err != nil {
@@ -166,56 +168,59 @@ func (s *TRPClient) newChan() {
 			s.Close()
 			break
 		}
-		go s.handleChan(src)
+		go s.handleChannel(src)
 	}
 }
 
-func (s *TRPClient) handleChan(src net.Conn) {
-	lk, err := conn.NewConn(src).GetLinkInfo()
-	if err != nil || lk == nil {
-		src.Close()
+// 当新的隧道连接的时候，执行此函数
+func (s *TRPClient) handleChannel(srcLink net.Conn) {
+	link, err := conn.NewConn(srcLink).GetLinkInfo()
+	if err != nil || link == nil {
+		srcLink.Close()
 		logs.Error("get connection info from server error ", err)
 		return
 	}
 	//host for target processing
-	lk.Host = common.FormatAddress(lk.Host)
+	link.Host = common.FormatAddress(link.Host)
 	//if Conn type is http, read the request and log
-	//logs.Info("type:", lk.ConnType)
-	if lk.ConnType == "http" {
-		if targetConn, err := net.DialTimeout(common.CONN_TCP, lk.Host, lk.Option.Timeout); err != nil {
-			logs.Warn("connect to %s error %s", lk.Host, err.Error())
-			src.Close()
+	//logs.Info("type:", link.ConnType)
+	if link.ConnType == "http" {
+		//先对目标网络建立连接
+		if targetConnIo, err := net.DialTimeout(common.CONN_TCP, link.Host, link.Option.Timeout); err != nil {
+			logs.Warn("connect to %s error %s", link.Host, err.Error())
+			srcLink.Close()
 		} else {
-			srcConn := conn.GetConn(src, lk.Crypt, lk.Compress, nil, false)
+			srcConnIo := conn.GetConn(srcLink, link.Crypt, link.Compress, nil, false)
+			//两个连接的底层实现
 			go func() {
-				common.CopyBuffer(srcConn, targetConn)
-				srcConn.Close()
-				targetConn.Close()
+				common.CopyConnectionBuffer(srcConnIo, targetConnIo)
+				srcConnIo.Close()
+				targetConnIo.Close()
 			}()
 			for {
-				if r, err := http.ReadRequest(bufio.NewReader(srcConn)); err != nil {
-					srcConn.Close()
-					targetConn.Close()
+				if r, err := http.ReadRequest(bufio.NewReader(srcConnIo)); err != nil {
+					srcConnIo.Close()
+					targetConnIo.Close()
 					break
 				} else {
 					logs.Trace("http request, method %s, host %s, url %s, remote address %s", r.Method, r.Host, r.URL.Path, r.RemoteAddr)
-					r.Write(targetConn)
+					r.Write(targetConnIo)
 				}
 			}
 		}
 		return
 	}
-	if lk.ConnType == "udp5" {
-		logs.Trace("new %s connection with the goal of %s, remote address:%s", lk.ConnType, lk.Host, lk.RemoteAddr)
-		s.handleUdp(src)
+	if link.ConnType == "udp5" {
+		logs.Trace("new %s connection with the goal of %s, remote address:%s", link.ConnType, link.Host, link.RemoteAddr)
+		s.handleUdp(srcLink)
 	}
 	//connect to target if conn type is tcp or udp
-	if targetConn, err := net.DialTimeout(lk.ConnType, lk.Host, lk.Option.Timeout); err != nil {
-		logs.Warn("connect to %s error %s", lk.Host, err.Error())
-		src.Close()
+	if targetConn, err := net.DialTimeout(link.ConnType, link.Host, link.Option.Timeout); err != nil {
+		logs.Warn("connect to %s error %s", link.Host, err.Error())
+		srcLink.Close()
 	} else {
-		logs.Trace("new %s connection with the goal of %s, remote address:%s", lk.ConnType, lk.Host, lk.RemoteAddr)
-		conn.CopyWaitGroup(src, targetConn, lk.Crypt, lk.Compress, nil, nil, false, nil, nil)
+		logs.Trace("new %s connection with the goal of %s, remote address:%s", link.ConnType, link.Host, link.RemoteAddr)
+		conn.CopyWaitGroup(srcLink, targetConn, link.Crypt, link.Compress, nil, nil, false, nil, nil)
 	}
 }
 
@@ -240,7 +245,7 @@ func (s *TRPClient) handleUdp(serverConn net.Conn) {
 			buf := bytes.Buffer{}
 			dgram := common.NewUDPDatagram(common.NewUDPHeader(0, 0, common.ToSocksAddr(raddr)), b[:n])
 			dgram.Write(&buf)
-			b, err := conn.GetLenBytes(buf.Bytes())
+			b, err := conn.GetLengthAndBytes(buf.Bytes())
 			if err != nil {
 				logs.Warn("get len bytes error", err.Error())
 				continue

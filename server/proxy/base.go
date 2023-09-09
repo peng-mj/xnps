@@ -27,7 +27,7 @@ type NetBridge interface {
 type BaseServer struct {
 	id           int
 	bridge       NetBridge
-	task         *models.Tunnel
+	tunnel       *models.Tunnel
 	errorContent []byte
 	sync.Mutex
 }
@@ -35,7 +35,7 @@ type BaseServer struct {
 func NewBaseServer(brg *bridge.Bridge, task *models.Tunnel) *BaseServer {
 	return &BaseServer{
 		bridge:       brg,
-		task:         task,
+		tunnel:       task,
 		errorContent: nil,
 		Mutex:        sync.Mutex{},
 	}
@@ -45,8 +45,8 @@ func NewBaseServer(brg *bridge.Bridge, task *models.Tunnel) *BaseServer {
 func (s *BaseServer) FlowAdd(in, out int64) {
 	s.Lock()
 	defer s.Unlock()
-	s.task.Flow.ExportFlow += out
-	s.task.Flow.InletFlow += in
+	s.tunnel.Flow.ExportFlow += out
+	s.tunnel.Flow.InletFlow += in
 }
 
 // write fail bytes to the connection
@@ -91,13 +91,13 @@ func (s *BaseServer) DealClient(c *conn.Conn, client *models.Client, addr string
 	rb []byte, tp string, f func(), flow *models.Flow, localProxy bool, task *models.Tunnel) error {
 
 	// TODO: 判断访问地址是否在黑名单内
-	if common.IsBlackIp(c.RemoteAddr().String(), client.VerifyKey, client.BlackIpList) {
+	if common.IsBlackIp(c.RemoteAddr().String(), client.VerifyKey) {
 		c.Close()
 		return nil
 	}
 
-	link := conn.NewLink(tp, addr, client.Cnf.Crypt, client.Cnf.Compress, c.Conn.RemoteAddr().String(), localProxy)
-	if target, err := s.bridge.SendLinkInfo(client.Id, link, s.task); err != nil {
+	link := conn.NewLink(tp, addr, client.Crypt, client.Compress, c.Conn.RemoteAddr().String(), localProxy)
+	if target, err := s.bridge.SendLinkInfo(client.Id, link, s.tunnel); err != nil {
 		logs.Warn("get connection from client id %d  error %s", client.Id, err.Error())
 		c.Close()
 		return err

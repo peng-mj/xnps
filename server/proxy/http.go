@@ -35,7 +35,7 @@ type httpServer struct {
 func NewHttp(bridge *bridge.Bridge, c *models.Tunnel, httpPort, httpsPort int, useCache bool, cacheLen int, addOrigin bool) *httpServer {
 	httpServer := &httpServer{
 		BaseServer: BaseServer{
-			task:   c,
+			tunnel: c,
 			bridge: bridge,
 			Mutex:  sync.Mutex{},
 		},
@@ -188,7 +188,7 @@ func (s *httpServer) handleHttpHost(c *conn.Conn, r *http.Request) {
 			}
 		}()
 
-		//err1 := goroutine.CopyBuffer(c, connClient, host.Client.Flow, nil, "")
+		//err1 := goroutine.CopyConnectionBuffer(c, connClient, host.Client.Flow, nil, "")
 		//if err1 != nil {
 		//	return
 		//}

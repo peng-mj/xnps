@@ -140,9 +140,9 @@ func (s *Sock5ModeServer) doConnect(c net.Conn, command uint8) {
 	} else {
 		ltype = common.CONN_TCP
 	}
-	s.DealClient(conn.NewConn(c), s.task.Client, addr, nil, ltype, func() {
+	s.DealClient(conn.NewConn(c), s.tunnel.Client, addr, nil, ltype, func() {
 		s.sendReply(c, succeeded)
-	}, s.task.Flow, s.task.Target.LocalProxy, nil)
+	}, s.tunnel.Flow, s.tunnel.Target.LocalProxy, nil)
 	return
 }
 
@@ -201,7 +201,7 @@ func (s *Sock5ModeServer) handleUDP(c net.Conn) {
 	var port uint16
 	binary.Read(c, binary.BigEndian, &port)
 	logs.Warn(host, string(port))
-	replyAddr, err := net.ResolveUDPAddr("udp", s.task.ServerIp+":0")
+	replyAddr, err := net.ResolveUDPAddr("udp", s.tunnel.ServerIp+":0")
 	if err != nil {
 		logs.Error("build local reply addr error", err)
 		return
@@ -216,10 +216,10 @@ func (s *Sock5ModeServer) handleUDP(c net.Conn) {
 	s.sendUdpReply(c, reply, succeeded, common.GetServerIpByClientIp(c.RemoteAddr().(*net.TCPAddr).IP))
 	defer reply.Close()
 	// new a tunnel to client
-	link := conn.NewLink("udp5", "", s.task.Client.Cnf.Crypt, s.task.Client.Cnf.Compress, c.RemoteAddr().String(), false)
-	target, err := s.bridge.SendLinkInfo(s.task.Client.Id, link, s.task)
+	link := conn.NewLink("udp5", "", s.tunnel.Client.Crypt, s.tunnel.Client.Compress, c.RemoteAddr().String(), false)
+	target, err := s.bridge.SendLinkInfo(s.tunnel.Client.Id, link, s.tunnel)
 	if err != nil {
-		logs.Warn("get connection from client id %d  error %s", s.task.Client.Id, err.Error())
+		logs.Warn("get connection from client id %d  error %s", s.tunnel.Client.Id, err.Error())
 		return
 	}
 
@@ -302,7 +302,7 @@ func (s *Sock5ModeServer) handleConn(c net.Conn) {
 		c.Close()
 		return
 	}
-	if (s.task.Client.Cnf.User != "" && s.task.Client.Cnf.Passwd != "") || (s.task.MultiAccount != nil && len(s.task.MultiAccount.AccountMap) > 0) {
+	if (s.tunnel.Client.HttpUser != "" && s.tunnel.Client.HttpPasswd != "") || (s.tunnel.MultiAccount != nil && len(s.tunnel.MultiAccount.AccountMap) > 0) {
 		buf[1] = UserPassAuth
 		c.Write(buf)
 		if err := s.Auth(c); err != nil {
@@ -341,20 +341,20 @@ func (s *Sock5ModeServer) Auth(c net.Conn) error {
 	}
 
 	var U, P string
-	if s.task.MultiAccount != nil {
+	if s.tunnel.MultiAccount != nil {
 		// enable multi user auth
 		U = string(user)
 		if len(U) == 0 {
 			return errors.New("验证不通过")
 		}
 		var ok bool
-		P, ok = s.task.MultiAccount.AccountMap[U]
+		P, ok = s.tunnel.MultiAccount.AccountMap[U]
 		if !ok {
 			return errors.New("验证不通过")
 		}
 	} else {
-		U = s.task.Client.Cnf.User
-		P = s.task.Client.Cnf.Passwd
+		U = s.tunnel.Client.HttpUser
+		P = s.tunnel.Client.HttpPasswd
 	}
 
 	if string(user) == U && string(pass) == P {
@@ -372,15 +372,15 @@ func (s *Sock5ModeServer) Auth(c net.Conn) error {
 
 // start
 func (s *Sock5ModeServer) Start() error {
-	return conn.NewTcpListenerAndProcess(s.task.ServerIp+":"+strconv.Itoa(s.task.Port), func(c net.Conn) {
-		if err := s.CheckFlowAndConnNum(s.task.Client); err != nil {
-			logs.Warn("client id %d, task id %d, error %s, when socks5 connection", s.task.Client.Id, s.task.Id, err.Error())
+	return conn.NewTcpListenerAndProcess(s.tunnel.ServerIp+":"+strconv.Itoa(s.tunnel.ServerPort), func(c net.Conn) {
+		if err := s.CheckFlowAndConnNum(s.tunnel.Client); err != nil {
+			logs.Warn("client id %d, tunnel id %d, error %s, when socks5 connection", s.tunnel.Client.Id, s.tunnel.Id, err.Error())
 			c.Close()
 			return
 		}
-		logs.Trace("New socks5 connection,client %d,remote address %s", s.task.Client.Id, c.RemoteAddr())
+		logs.Trace("New socks5 connection,client %d,remote address %s", s.tunnel.Client.Id, c.RemoteAddr())
 		s.handleConn(c)
-		s.task.Client.AddConn()
+		s.tunnel.Client.AddConn()
 	}, &s.listener)
 }
 
@@ -388,7 +388,7 @@ func (s *Sock5ModeServer) Start() error {
 func NewSock5ModeServer(bridge NetBridge, task *models.Tunnel) *Sock5ModeServer {
 	s := new(Sock5ModeServer)
 	s.bridge = bridge
-	s.task = task
+	s.tunnel = task
 	return s
 }
 
