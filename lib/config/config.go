@@ -108,7 +108,7 @@ func getTitleContent(s string) string {
 func dealCommon(s string) *CommonConfig {
 	c := &CommonConfig{}
 	c.Client = database.NewClient("", true, true)
-	c.Client.Cnf = new(models.Config)
+	//c.Client.Cnf = new(models.Config)
 	for _, v := range splitStr(s) {
 		item := strings.Split(v, "=")
 		if len(item) == 0 {
@@ -126,17 +126,17 @@ func dealCommon(s string) *CommonConfig {
 		case "auto_reconnection":
 			c.AutoReconnection = common.GetBoolByStr(item[1])
 		case "basic_username":
-			c.Client.Cnf.User = item[1]
+			c.Client.HttpUser = item[1]
 		case "basic_password":
-			c.Client.Cnf.Passwd = item[1]
+			c.Client.HttpPasswd = item[1]
 		case "web_password":
-			c.Client.WebPasswd = item[1]
+			c.Client.HttpPasswd = item[1]
 		case "web_username":
-			c.Client.WebUser = item[1]
+			c.Client.HttpUser = item[1]
 		case "compress":
-			c.Client.Cnf.Compress = common.GetBoolByStr(item[1])
+			c.Client.Compress = common.GetBoolByStr(item[1])
 		case "crypt":
-			c.Client.Cnf.Crypt = common.GetBoolByStr(item[1])
+			c.Client.Crypt = common.GetBoolByStr(item[1])
 		case "proxy_url":
 			c.ProxyUrl = item[1]
 		case "rate_limit":

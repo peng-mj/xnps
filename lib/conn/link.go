@@ -7,9 +7,9 @@ type Secret struct {
 	Conn     *Conn
 }
 
-func NewSecret(p string, conn *Conn) *Secret {
+func NewSecret(passwd string, conn *Conn) *Secret {
 	return &Secret{
-		Password: p,
+		Password: passwd,
 		Conn:     conn,
 	}
 }

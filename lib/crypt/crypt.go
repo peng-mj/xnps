@@ -83,6 +83,7 @@ func GetRandomString(l int) string {
 	return string(result)
 }
 
+// 32位输出,可排序，唯一，随机
 func GenerateRandomVKey() string {
 
 	entropy := ulid.Monotonic(rand.New(rand.NewSource(time.Now().UnixNano())), 0)

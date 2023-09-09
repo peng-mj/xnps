@@ -35,4 +35,14 @@ WWW-Authenticate: Basic realm="easyProxy"
 	ConnectionFailBytes = `HTTP/1.1 404 Not Found
 
 `
+	MODE_TCP     = "tcp"
+	MODE_UDP     = "udp"
+	MODE_HTTP    = "http"
+	MODE_HTTPS   = "https"
+	MODE_SECRECT = "secrect"
+	MODE_P2P     = "p2p"
 )
+
+func IsTunnelMode(md string) bool {
+	return md == MODE_P2P || md == MODE_TCP || md == MODE_UDP || md == MODE_HTTP || md == MODE_HTTPS || md == MODE_SECRECT
+}
