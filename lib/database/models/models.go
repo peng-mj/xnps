@@ -30,7 +30,7 @@ func (s *Flow) TableName() string {
 type Client struct {
 	Id                 int64      `gorm:"column:id;type:int;auto_increment;not null;primaryKey;" json:"Id"`
 	VerifyKey          string     `gorm:"column:verify_key;type:text;not null" json:"VerifyKey"`
-	Addr               string     `gorm:"column:addr;type:text;not null;default: " json:"Addr"`
+	RemoteAddr         string     `gorm:"column:remote_addr;type:text;not null;default: " json:"RemoteAddr"` //客户端真实IP
 	Remark             string     `gorm:"column:remark;type:text;not null;default: " json:"Remark"`
 	Valid              bool       `gorm:"column:valid;type:integer;default:0;not null" json:"Valid"`
 	Connected          bool       `gorm:"column:connected;type:integer;default:0;not null" json:"Connected"`
@@ -128,6 +128,34 @@ type BlockListInfo struct {
 
 func (*BlockListInfo) TableName() string {
 	return "block_recode"
+}
+
+// 只执行一次，当数据库中无配置信息时
+type SystemConfig struct {
+	Id                int64  `gorm:"column:id;type:integer;primaryKey" json:"Id"`
+	WebHost           int64  `gorm:"column:block_type;type:integer;not null;default:1" json:"WebHost"`
+	WebPort           int64  `gorm:"column:block_type;type:integer;not null;default:1" json:"WebPort"`
+	WebUserName       int64  `gorm:"column:block_type;type:integer;not null;default:1" json:"WebUserName"`
+	WebPassword       string `gorm:"column:block_type;type:integer;not null;default:1" json:"WebPassword"`  //因为是sha256加密，所以需要考虑密码重置的情况
+	WebIsCaptcha      bool   `gorm:"column:block_type;type:integer;not null;default:1" json:"WebIsCaptcha"` //是否开启验证码校验
+	AuthCryptKey      string `gorm:"column:block_type;type:integer;not null;default:1" json:"AuthCryptKey"`
+	AllowPorts        string `gorm:"column:block_type;type:integer;not null;default:1" json:"AllowPorts"`
+	PublicKey         string `gorm:"column:block_type;type:integer;not null;default:1" json:"PublicKey"`
+	BridgeType        string `gorm:"column:block_type;type:integer;not null;default:1" json:"BlockType"`
+	BridgePort        string `gorm:"column:block_type;type:integer;not null;default:1" json:"BridgePort"`
+	BridgeHost        string `gorm:"column:block_type;type:integer;not null;default:1" json:"BridgeHost"`
+	LogLevel          string `gorm:"column:block_type;type:integer;not null;default:1" json:"LogLevel"`
+	LogPath           string `gorm:"column:block_type;type:integer;not null;default:1" json:"LogPath"`
+	MaxClient         int64  `gorm:"column:block_type;type:integer;not null;default:1" json:"MaxClient"`
+	MaxConn           int64  `gorm:"column:block_type;type:integer;not null;default:1" json:"MaxConn"`
+	DisConnTimeoutSec int64  `gorm:"column:block_type;type:integer;not null;default:1" json:"DisConnTimeoutSec"`
+
+	//BlockType  int64  `gorm:"column:block_type;type:integer;not null;default:1" json:"BlockType"`
+	//BlockType  int64  `gorm:"column:block_type;type:integer;not null;default:1" json:"BlockType"`
+}
+
+func (*SystemConfig) TableName() string {
+	return "system_config"
 }
 
 func (s *Client) CutConn() {

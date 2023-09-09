@@ -26,15 +26,15 @@ func (s *DbUtils) CheckVKey(vKey string) bool {
 
 func NewClient(vKey string, noStore bool, noDisplay bool) *models.Client {
 	return &models.Client{
-		VerifyKey: vKey,
-		Addr:      "",
-		Remark:    "",
-		Valid:     true,
-		Connected: false,
-		RateLimit: 0,
-		Flow:      new(models.Flow),
-		Rate:      nil,
-		RWMutex:   sync.RWMutex{},
+		VerifyKey:  vKey,
+		RemoteAddr: "",
+		Remark:     "",
+		Valid:      true,
+		Connected:  false,
+		RateLimit:  0,
+		Flow:       new(models.Flow),
+		Rate:       nil,
+		RWMutex:    sync.RWMutex{},
 	}
 }
 

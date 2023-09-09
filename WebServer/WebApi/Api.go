@@ -5,6 +5,29 @@ import (
 	"net/http"
 )
 
+/**********        USER          *********/
+
+func GetAllUser(c echo.Context) (err error) {
+
+	return c.HTML(http.StatusOK, "")
+}
+func GetUserByCondition(c echo.Context) (err error) {
+
+	return c.HTML(http.StatusOK, "")
+}
+func AddUser(c echo.Context) (err error) {
+
+	return c.HTML(http.StatusOK, "")
+}
+func DelUser(c echo.Context) (err error) {
+
+	return c.HTML(http.StatusOK, "")
+}
+func EditUser(c echo.Context) (err error) {
+
+	return c.HTML(http.StatusOK, "")
+}
+
 /**********        GROUP          *********/
 
 func GetAllGroup(c echo.Context) (err error) {
@@ -105,6 +128,26 @@ func GetSystemStatus(c echo.Context) (err error) {
 func GetConnectInfo(c echo.Context) (err error) {
 	return c.HTML(http.StatusOK, "")
 }
-func GetSystemStatus(c echo.Context) (err error) {
+
+/**********        BLOCK_LIST          *********/
+
+func GetAllBlockList(c echo.Context) (err error) {
+
+	return c.HTML(http.StatusOK, "")
+}
+func GetBlockListByCondition(c echo.Context) (err error) {
+
+	return c.HTML(http.StatusOK, "")
+}
+func AddFBlockList(c echo.Context) (err error) {
+
+	return c.HTML(http.StatusOK, "")
+}
+func DelBlockList(c echo.Context) (err error) {
+
+	return c.HTML(http.StatusOK, "")
+}
+func EditBlockList(c echo.Context) (err error) {
+
 	return c.HTML(http.StatusOK, "")
 }
