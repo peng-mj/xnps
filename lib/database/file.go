@@ -17,21 +17,22 @@ import (
 
 var Db *DbUtils
 
-func NewDb(dbFile string) *DbUtils {
-	var Db = DbUtils{}
+func NewDatabase(dbFile string) *DbUtils {
+	var db = DbUtils{}
 	var err error
-	Db.GDb, err = gorm.Open(sqlite.Open(dbFile), &gorm.Config{})
+	db.GDb, err = gorm.Open(sqlite.Open(dbFile), &gorm.Config{})
 	if err != nil {
 		fmt.Println("打开数据库失败")
 		os.Exit(-1)
 	} else {
-		err := Db.GDb.AutoMigrate(
-			models.Client{})
+		err := db.GDb.AutoMigrate(
+			models.Client{}, models.Tunnel{}, models.Flow{}, models.UserInfo{})
 		if err != nil {
 			logs.Info("创建数据表失败", err)
 		}
 	}
-	return &Db
+	Db = &db
+	return &db
 }
 
 func NewJsonDb(runPath string) *JsonDb {
@@ -159,12 +160,12 @@ func storeSyncMapToFile(m sync.Map, filePath string) {
 				return true
 			}
 			b, err = json.Marshal(obj)
-		case *models.Host:
-			obj := value.(*models.Host)
-			if obj.NoStore {
-				return true
-			}
-			b, err = json.Marshal(obj)
+		//case *models.Host:
+		//	obj := value.(*models.Host)
+		//	if obj.NoStore {
+		//		return true
+		//	}
+		//	b, err = json.Marshal(obj)
 		case *models.Client:
 			obj := value.(*models.Client)
 			if obj.Valid {

@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strconv"
 	"sync"
+	"xnps/lib/common"
 	"xnps/lib/crypt"
 	"xnps/lib/database/models"
 	"xnps/lib/rate"
@@ -41,6 +42,7 @@ func NewClient(vKey string, noStore bool, noDisplay bool) *models.Client {
 func GetDb() *DbUtils {
 	if Db == nil {
 		logs.Info("数据库未打开")
+
 		os.Exit(-1)
 	}
 	return Db
@@ -58,18 +60,94 @@ func GetMapKeys(m sync.Map, isSort bool, sortKey, order string) (keys []int) {
 	return
 }
 
-func (s *DbUtils) GetClientList(start, length int, search, sort, order string, clientId int) ([]models.Client, int) {
+func (s *DbUtils) CheckTunnelClient(clientId, tunId int64) bool {
+	var count int64
+	s.GDb.Model(models.Client{}).Where("client_id = ? and id = ? ", clientId, tunId).Count(&count)
+	return count > 0
+}
+
+func (s *DbUtils) GetClientList(start, length int64, search, sort, order string, clientId int) ([]models.Client, int) {
 	var cli []models.Client
 	s.GDb.Model(models.Client{}).Where("valid = 1").Find(&cli)
 	return cli, len(cli)
-
 }
 
-func (s *DbUtils) GetIdByVerifyKey(vKey string, addr string) (id int, err error) {
+// GetAllClientCount if status <0 this func would count whether the client connected, the status equal to 1 for connected and o for disconnected clients
+// the valid is like to status
+func (s *DbUtils) GetAllClientCount(status int, valid int) (count int64) {
+	db := s.GDb.Model(models.Tunnel{})
+	if status == 0 || status == 1 {
+		db = db.Where("connected = ?", status)
+	}
+	if valid == 0 || valid == 1 {
+		db = db.Where("valid = ?", valid)
+	}
+	db.Count(&count)
+	return
+}
+
+func (s *DbUtils) GetClientCountByMode(mode string) (count int64) {
+	s.GDb.Model(models.Client{}).Where("mode = ? ", mode).Count(&count)
+	return
+}
+func (s *DbUtils) UpdateClientById(client *models.Client, id int64) (count int64) {
+	s.GDb.Model(models.Client{}).Where("id = ?", id).Updates(client)
+	return
+}
+
+// 离线false,上线true
+func (s *DbUtils) GetAllTunnelCountByStatus(status bool, mode string) (count int64) {
+	db := s.GDb.Model(models.Tunnel{}).Where("connected = ? ", status)
+	if common.IsTunnelMode(mode) {
+		db = db.Where("mode = ?", mode)
+	}
+	db.Count(&count)
+	return
+}
+
+func (s *DbUtils) GetTunnelListByClientId(valid, clientId int64) ([]models.Tunnel, int) {
+	var cli []models.Tunnel
+	db := s.GDb.Model(models.Tunnel{}).Where("client_id = ?", clientId)
+	if valid == 0 || valid == 1 {
+		db = db.Where("valid = ?", valid)
+	}
+	db.Find(&cli)
+	return cli, len(cli)
+}
+
+func (s *DbUtils) SetClientStatus(status bool, clientId int64) {
+	s.GDb.Model(models.Client{}).Where("id = ?", clientId).Updates(&models.Client{Connected: status})
+}
+
+func (s *DbUtils) GetTunnelListByClientIdWithPage(start, recordsCount int, mode string, clientId int64) ([]models.Tunnel, int) {
+	var cli []models.Tunnel
+	db := s.GDb.Model(models.Tunnel{}).Where("client_id = ? and valid = 1", clientId)
+	if common.IsTunnelMode(mode) {
+		db = db.Where("mode = ?", mode)
+	}
+	db.Offset(start).Limit(recordsCount).Find(&cli)
+	return cli, len(cli)
+}
+func (s *DbUtils) GetAllTunnelList(status int) ([]models.Tunnel, int) {
+	var cli []models.Tunnel
+	db := s.GDb.Model(models.Tunnel{})
+	if status == 0 || status == 1 {
+		db = db.Where("valid = ?", status)
+	}
+	db.Find(&cli)
+	return cli, len(cli)
+}
+func (s *DbUtils) GetAllTunnelNumById(id int64) int {
+	var num int64
+	s.GDb.Model(models.Tunnel{}).Where("id = ?", id).Count(&num)
+	return int(num)
+}
+
+func (s *DbUtils) GetIdByVerifyKey(vKey string, addr string) (id int64, err error) {
 	var cli models.Client
 	res := s.GDb.Model(models.Client{}).Where("verify_key = ?", vKey).RowsAffected
 	if res > 0 {
-		return int(cli.Id), nil
+		return cli.Id, nil
 	}
 	return 0, errors.New("not found")
 }
@@ -111,15 +189,16 @@ func (s *DbUtils) DelTask(id int64) error {
 // md5 password
 func (s *DbUtils) GetTaskByMd5Password(p string) (tunnel *models.Tunnel) {
 	//var tunnel models.Tunnel
-	s.GDb.Model(models.Tunnel{}).Where("passwd = ?", p).First(tunnel)
-	s.JsonDb.Tasks.Range(func(key, value interface{}) bool {
-		if crypt.Md5(value.(*models.Tunnel).Password) == p {
-			t = value.(*models.Tunnel)
-			return false
-		}
-		return true
-	})
-	return
+	s.GDb.Model(models.Tunnel{}).Where("Password = ?", p).First(tunnel)
+	return tunnel
+	//s.JsonDb.Tasks.Range(func(key, value interface{}) bool {
+	//	if crypt.Sha256(value.(*models.Tunnel).Password) == p {
+	//		//t = value.(*models.Tunnel)
+	//		return false
+	//	}
+	//	return true
+	//})
+	//return
 }
 
 func (s *DbUtils) GetTaskById(id int64) (tunnel *models.Tunnel, e error) {
@@ -134,9 +213,10 @@ func (s *DbUtils) DelClient(id int64) error {
 	return nil
 }
 
+// 这个地方需要重构，客户端ID自动生成
 func (s *DbUtils) NewClient(c *models.Client) error {
 	var isNotSet bool
-	if c.WebUser != "" && !s.VerifyUserName(c.WebUser, c.Id) {
+	if c.HttpUser != "" && !s.VerifyUserName(c.HttpUser, c.Id) {
 		return errors.New("web login username duplicate, please reset")
 	}
 reset:
@@ -194,7 +274,7 @@ func (s *DbUtils) IsPubClient(id int64) bool {
 	return s.GDb.Model(models.Client{}).Where("id = ? and valid = 1", id).First(new(models.Client)).RowsAffected > 0
 }
 
-func (s *DbUtils) GetClient(id int64) (c *models.Client, err error) {
+func (s *DbUtils) GetClientById(id int64) (c *models.Client, err error) {
 	if s.GDb.Model(models.Client{}).Where("id = ? and valid = 1", id).First(c).RowsAffected < 1 {
 		err = errors.New("未找到客户端")
 	}
