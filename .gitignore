@@ -1,6 +1,7 @@
 .idea
 ./nps*
 ./npc*
+cmd/test
 bin
 TEMP
 *.exe
