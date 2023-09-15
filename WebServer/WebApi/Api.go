@@ -1,32 +1,82 @@
 package WebApi
 
 import (
+	"encoding/json"
 	"github.com/labstack/echo/v4"
+	"io"
 	"net/http"
+	"xnps/WebServer/WebObj"
+	"xnps/lib/database"
+	"xnps/lib/database/models"
 )
 
 /**********        USER          *********/
 
-func GetAllUser(c echo.Context) (err error) {
-
-	return c.HTML(http.StatusOK, "")
+func GetSysConfig(c echo.Context) (err error) {
+	var conf models.SystemConfig
+	conf, err = database.GetDb().GetSystemConfig()
+	if err != nil {
+		return err
+	}
+	re := WebObj.Request{}
+	if err != nil {
+		re.MsgType = "ERROR"
+		re.Data = conf
+	} else {
+		re.MsgType = "OK"
+		re.Data = err.Error()
+	}
+	reStr, _ := json.Marshal(re)
+	return c.HTML(http.StatusOK, string(reStr))
 }
-func GetUserByCondition(c echo.Context) (err error) {
-
-	return c.HTML(http.StatusOK, "")
+func EditSYsConfig(c echo.Context) (err error) {
+	re := WebObj.Request{}
+	body, err := io.ReadAll(c.Request().Body)
+	conf := new(models.SystemConfig)
+	if err == nil {
+		err = json.Unmarshal(body, &conf)
+		if err == nil {
+			database.GetDb().EditSysConfig(conf)
+		}
+	}
+	if err != nil {
+		re.MsgType = "ERROR"
+		re.Data = err.Error()
+	} else {
+		re.MsgType = "OK"
+		re.Data = "update system config succeed"
+	}
+	reStr, _ := json.Marshal(re)
+	return c.HTML(http.StatusOK, string(reStr))
 }
-func AddUser(c echo.Context) (err error) {
 
-	return c.HTML(http.StatusOK, "")
+// TODO：配置文件还是单独存入一个配置文件中，通过监测配置文件是否存在来启动初始化启动器
+// 添加新的系统配置，如果某些配置为空，那么使用默认配置，将生成的默认配置返回
+func AddSysConfig(c echo.Context) (err error) {
+	re := WebObj.Request{}
+	body, err := io.ReadAll(c.Request().Body)
+	conf := new(models.SystemConfig)
+	if err == nil {
+		err = json.Unmarshal(body, &conf)
+		if err == nil {
+			conf, err = database.GetDb().AddSysConfig(conf)
+		}
+	}
+	if err != nil {
+		re.MsgType = "ERROR"
+		re.Data = err.Error()
+	} else {
+		re.MsgType = "OK"
+		re.Data = "update system config succeed"
+	}
+	reStr, _ := json.Marshal(re)
+	//return c.HTML(http.StatusOK, string(reStr))
+	return c.HTML(http.StatusOK, string(reStr))
 }
-func DelUser(c echo.Context) (err error) {
 
-	return c.HTML(http.StatusOK, "")
-}
-func EditUser(c echo.Context) (err error) {
-
-	return c.HTML(http.StatusOK, "")
-}
+//func CheckSysInit(c echo.Context) (err error) {
+//
+//}
 
 /**********        GROUP          *********/
 

@@ -409,7 +409,7 @@ loop:
 				//	tun := value.(*models.Tunnel)
 				//	//if _, ok := s.runList[v.Id]; ok && v.Client.Id == id {
 				//	if _, ok := s.runList.Load(tun.Id); ok && tun.Client.Id == id {
-				//		str += tun.Remark + common.CONN_DATA_SEQ
+				//		str += tun.Name + common.CONN_DATA_SEQ
 				//	}
 				//	return true
 				//})

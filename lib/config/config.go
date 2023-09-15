@@ -87,7 +87,7 @@ func NewConfig(path string) (c *Config, err error) {
 			default:
 				if strings.Index(nowContent, "host") > -1 {
 					//h := dealHost(nowContent)
-					//h.Remark = getTitleContent(c.title[i])
+					//h.Name = getTitleContent(c.title[i])
 					//c.Hosts = append(c.Hosts, h)
 				} else {
 					t := dealTunnel(nowContent)
@@ -146,7 +146,7 @@ func dealCommon(s string) *CommonConfig {
 		case "max_conn":
 			c.Client.MaxConn = common.GetIntNoErrByStr(item[1])
 		case "remark":
-			c.Client.Remark = item[1]
+			c.Client.Name = item[1]
 		case "pprof_addr":
 			common.InitPProfFromArg(item[1])
 		case "disconnect_timeout":

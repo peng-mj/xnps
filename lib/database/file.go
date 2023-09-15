@@ -26,7 +26,7 @@ func NewDatabase(dbFile string) *DbUtils {
 		os.Exit(-1)
 	} else {
 		err := db.GDb.AutoMigrate(
-			models.Client{}, models.Tunnel{}, models.Flow{}, models.UserInfo{})
+			models.Client{}, models.Tunnel{}, models.Flow{}, models.SystemConfig{}, models.Firewall{}, models.BlockListInfo{})
 		if err != nil {
 			logs.Info("创建数据表失败", err)
 		}

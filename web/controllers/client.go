@@ -49,8 +49,8 @@ func (s *ClientController) Add() {
 		t := &models.Client{
 			VerifyKey: s.getEscapeString("vkey"),
 			//Id:        id,
-			Valid:  true,
-			Remark: s.getEscapeString("remark"),
+			Valid: true,
+			Name:  s.getEscapeString("remark"),
 			//HttpUser:   s.getEscapeString("u"),
 			//HttpPasswd: s.getEscapeString("p"),
 			//Cnf: &models.Config{
@@ -59,7 +59,8 @@ func (s *ClientController) Add() {
 			//	Compress: common.GetBoolByStr(s.getEscapeString("compress")),
 			//	Crypt:    s.GetBoolNoErr("crypt"),
 			//},
-			AllowUseConfigFile: s.GetBoolNoErr("config_conn_allow"),
+			//AllowUseConfigFile: s.GetBoolNoErr("config_conn_allow"),
+			AllowUseConfigFile: false, //不允许用户使用配置文件登录
 			RateLimit:          int(s.GetIntNoErr("rate_limit")),
 			MaxConn:            int(s.GetIntNoErr("max_conn")),
 			Compress:           common.GetBoolByStr(s.getEscapeString("compress")),
@@ -133,7 +134,7 @@ func (s *ClientController) Edit() {
 				c.MaxConn = int(int32(s.GetIntNoErr("max_conn")))
 				c.MaxTunnelNum = int(s.GetIntNoErr("max_tunnel"))
 			}
-			c.Remark = s.getEscapeString("remark")
+			c.Name = s.getEscapeString("remark")
 			c.HttpUser = s.getEscapeString("u")
 			c.HttpPasswd = s.getEscapeString("p")
 			c.Compress = common.GetBoolByStr(s.getEscapeString("compress"))

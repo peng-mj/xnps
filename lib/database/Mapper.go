@@ -28,7 +28,7 @@ func NewClient(vKey string, noStore bool, noDisplay bool) *models.Client {
 	return &models.Client{
 		VerifyKey:  vKey,
 		RemoteAddr: "",
-		Remark:     "",
+		Name:       "",
 		Valid:      true,
 		Connected:  false,
 		RateLimit:  0,
@@ -58,6 +58,16 @@ func GetMapKeys(m sync.Map, isSort bool, sortKey, order string) (keys []int) {
 	})
 	sort.Ints(keys)
 	return
+}
+
+func (s *DbUtils) CheckUserName(username string) bool {
+	if len(username) > 3 {
+		c := int64(0)
+		s.GDb.Model(models.SystemConfig{}).Where("web_username = ?", username).Limit(1).Count(&c)
+		return c > 0
+	}
+	return false
+
 }
 
 func (s *DbUtils) CheckTunnelClient(clientId, tunId int64) bool {
@@ -186,7 +196,6 @@ func (s *DbUtils) DelTask(id int64) error {
 }
 
 // TODO:使用gorm造成不能遍历密码，从而验证密钥正确性，需要修改，所以，后期存储密钥直接存储加密后的值
-// md5 password
 func (s *DbUtils) GetTaskByMd5Password(p string) (tunnel *models.Tunnel) {
 	//var tunnel models.Tunnel
 	s.GDb.Model(models.Tunnel{}).Where("Password = ?", p).First(tunnel)
@@ -283,8 +292,8 @@ func (s *DbUtils) GetClientById(id int64) (c *models.Client, err error) {
 
 func (s *DbUtils) GetClientIdByVkey(vkey string) (id int64, err error) {
 	var cli models.Client
+	err = errors.New("未找到客户端")
 	if s.GDb.Model(models.Client{}).Where("verify_key = ?", vkey).First(&cli).RowsAffected < 1 {
-		err = errors.New("未找到客户端")
 	}
 	return
 
@@ -300,4 +309,34 @@ func (s *DbUtils) GetClientTunnelNumByClientId(id int64) int {
 	var num int64
 	s.GDb.Model(models.Tunnel{}).Where("client_id = ?", id).Count(&num)
 	return int(num)
+}
+
+func (s *DbUtils) GetPasswdByUser(user string) (passwd string, err error) {
+	sys := new(models.SystemConfig)
+	if s.GDb.Model(models.SystemConfig{}).Where("web_username = ?", user).First(sys).RowsAffected > 0 {
+		return sys.WebPassword, nil
+	} else {
+		return "", errors.New("have no user named " + user)
+	}
+}
+
+func (s *DbUtils) AddSysConfig(sCOnf *models.SystemConfig) (sysConfig *models.SystemConfig, err error) {
+
+	if _, err2 := s.GetSystemConfig(); err2 != nil {
+		s.GDb.Model(models.SystemConfig{}).Create(sCOnf)
+		return sCOnf, nil
+	} else {
+		err = errors.New("already have system config")
+	}
+	return
+}
+func (s *DbUtils) EditSysConfig(config *models.SystemConfig) {
+
+	s.GDb.Model(models.SystemConfig{}).Updates(config)
+}
+func (s *DbUtils) GetSystemConfig() (sys models.SystemConfig, err error) {
+	if s.GDb.Model(models.SystemConfig{}).First(&sys).RowsAffected < 1 {
+		err = errors.New("have no sys config")
+	}
+	return
 }

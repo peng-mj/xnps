@@ -1,26 +1,58 @@
 package WebServer
 
 import (
+	"github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"sync"
+	"xnps/WebServer/WebApi"
 	"xnps/WebServer/WebObj"
 )
 
 type WebServer struct {
-	e    *echo.Echo
-	salt *WebObj.Salt
+	e        *echo.Echo
+	salt     *WebObj.KVManage
+	JWTToken *jwt.Token
+	//tokenMan TokenManager
 }
 
-////go:embed web/static*
+////go:embed web/static/*
 //var staticFiles embed.FS
+
+func InitSystem(wg *sync.WaitGroup, url string) {
+	w := new(echo.Echo)
+
+	//w.salt = WebObj.NewKVMap(20)
+	//w.JWTToken = jwt.New(jwt.SigningMethodHS256)
+	//w.JWTToken
+	w = echo.New()
+	//装载静态文件
+	w.Static("/", "web/static/")
+	//w.e.Static("/", staticFiles.ReadDir())
+	w.Use(middleware.BodyLimit("2M"))
+	w.Use(middleware.CORS()) //NOTE:如果跨域，需要特别注意
+	w.POST("/initSystem", func(c echo.Context) error {
+		err := WebApi.AddSysConfig(c)
+		if err == nil {
+			//w.StaticFS()
+			wg.Done()
+
+		}
+		return err
+	})
+	w.Logger.Fatal(w.Start(url))
+
+}
 
 func (w *WebServer) Start(url string) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	defer wg.Done()
-	w.salt = WebObj.NewSaltMap(20)
+	w.salt = WebObj.NewKVMap(20)
+	w.JWTToken = jwt.New(jwt.SigningMethodHS256)
+	//w.JWTToken
 	w.e = echo.New()
+
 	w.e.HTTPErrorHandler = w.ErrorHandler
 	//装载静态文件
 	w.e.Static("/", "web/static/")
@@ -46,7 +78,7 @@ func (w *WebServer) Start(url string) {
 //	return func(c echo.Context) error {
 //
 //		//获取请求中的密钥
-//		Salt := c.Request().Header.Get("Salt")
+//		KVManage := c.Request().Header.Get("KVManage")
 //		user := c.Request().Header.Get("username")
 //
 //		// 验证密钥是否正确

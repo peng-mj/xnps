@@ -270,7 +270,7 @@ func GetTunnel(start, length int, modelType string, clientId int64, search strin
 	//		if (modelType != "" && v.Mode != modelType || (clientId != 0 && v.Client.Id != clientId)) || (modelType == "" && clientId != v.Client.Id) {
 	//			continue
 	//		}
-	//		if search != "" && !(v.Id == int64(common.GetIntNoErrByStr(search)) || v.ServerPort == common.GetIntNoErrByStr(search) || strings.Contains(v.Password, search) || strings.Contains(v.Remark, search) || strings.Contains(v.Client.VerifyKey, search)) {
+	//		if search != "" && !(v.Id == int64(common.GetIntNoErrByStr(search)) || v.ServerPort == common.GetIntNoErrByStr(search) || strings.Contains(v.Password, search) || strings.Contains(v.Name, search) || strings.Contains(v.Client.VerifyKey, search)) {
 	//			continue
 	//		}
 	//		cnt++
