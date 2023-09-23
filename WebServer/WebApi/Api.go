@@ -32,5 +32,3 @@ func GetSystemStatus(c echo.Context) (err error) {
 func GetConnectInfo(c echo.Context) (err error) {
 	return c.String(http.StatusOK, "")
 }
-
-/**********        BLOCK_LIST          *********/
