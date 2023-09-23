@@ -43,11 +43,6 @@ type Login struct {
 	Password string `json:"Password,omitempty"` //sha256加密
 }
 
-//type SysConfig struct {
-//	Username string `json:"Username,omitempty"`
-//	Password string `json:"Password,omitempty"` //sha256加密
-//}
-
 // 用于控制平台，不同用户的最大的同时登录使用数量
 type KVManage struct {
 	SaltMap map[string]string
