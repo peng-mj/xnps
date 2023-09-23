@@ -96,8 +96,8 @@ func GetIntNoErrByStr(str string) int {
 }
 
 // Get verify value
-func Getverifyval(vkey string) string {
-	return crypt.Md5(vkey)
+func GetVerifyValue(vkey string) string {
+	return crypt.Sha256(vkey)
 }
 
 // Change headers and host of request
@@ -285,8 +285,21 @@ func in(target string, str_array []string) bool {
 	return false
 }
 
+// TODO:重构，增加防火墙功能
 // 判断访问地址是否在黑名单内
-func IsBlackIp(ipPort, vkey string, blackIpList []string) bool {
+func IsBlackIp(ipPort, vkey string) bool {
+	return false
+	//ip := GetIpByAddr(ipPort)
+	//if in(ip, blackIpList) {
+	//	logs.Error("IP地址[" + ip + "]在隧道[" + vkey + "]黑名单列表内")
+	//	return true
+	//}
+	//return false
+}
+
+// TODO:重构，防火墙
+// 判断访问地址是否在黑名单内
+func CheckBlackIp(ipPort, vkey string, blackIpList []string) bool {
 	ip := GetIpByAddr(ipPort)
 	if in(ip, blackIpList) {
 		logs.Error("IP地址[" + ip + "]在隧道[" + vkey + "]黑名单列表内")
@@ -295,24 +308,22 @@ func IsBlackIp(ipPort, vkey string, blackIpList []string) bool {
 	return false
 }
 
-func CopyBuffer(dst io.Writer, src io.Reader, label ...string) (written int64, err error) {
+// CopyConnectionBuffer 底层实现，最重要的函数
+func CopyConnectionBuffer(destination io.Writer, source io.Reader, label ...string) (written int64, err error) {
 	buf := CopyBuff.Get()
 	defer CopyBuff.Put(buf)
 	for {
-		nr, er := src.Read(buf)
-		//if len(pr)>0 && pr[0] && nr > 50 {
-		//	logs.Warn(string(buf[:50]))
-		//}
-		if nr > 0 {
-			nw, ew := dst.Write(buf[0:nr])
-			if nw > 0 {
-				written += int64(nw)
+		readCount, er := source.Read(buf)
+		if readCount > 0 {
+			writeCount, ew := destination.Write(buf[0:readCount])
+			if writeCount > 0 {
+				written += int64(writeCount)
 			}
 			if ew != nil {
 				err = ew
 				break
 			}
-			if nr != nw {
+			if readCount != writeCount {
 				err = io.ErrShortWrite
 				break
 			}

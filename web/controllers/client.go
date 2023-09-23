@@ -2,13 +2,14 @@ package controllers
 
 import (
 	"github.com/astaxie/beego"
-	"strings"
 	"xnps/lib/common"
-	"xnps/lib/file"
+	"xnps/lib/database"
+	"xnps/lib/database/models"
 	"xnps/lib/rate"
 	"xnps/server"
 )
 
+// ClientController 客户端管理相关API
 type ClientController struct {
 	BaseController
 }
@@ -44,42 +45,48 @@ func (s *ClientController) Add() {
 		s.SetInfo("add client")
 		s.display()
 	} else {
-		id := int(file.GetDb().JsonDb.GetClientId())
-		t := &file.Client{
+		//id := database.GetDb().JsonDb.GetClientId()
+		t := &models.Client{
 			VerifyKey: s.getEscapeString("vkey"),
-			Id:        id,
-			Status:    true,
-			Remark:    s.getEscapeString("remark"),
-			Cnf: &file.Config{
-				User:     s.getEscapeString("u"),
-				Passwd:   s.getEscapeString("p"),
-				Compress: common.GetBoolByStr(s.getEscapeString("compress")),
-				Crypt:    s.GetBoolNoErr("crypt"),
-			},
-			ConfigConnAllow: s.GetBoolNoErr("config_conn_allow"),
-			RateLimit:       s.GetIntNoErr("rate_limit"),
-			MaxConn:         s.GetIntNoErr("max_conn"),
-			WebUserName:     s.getEscapeString("web_username"),
-			WebPassword:     s.getEscapeString("web_password"),
-			MaxTunnelNum:    s.GetIntNoErr("max_tunnel"),
-			Flow: &file.Flow{
+			//Id:        id,
+			Valid: true,
+			Name:  s.getEscapeString("remark"),
+			//HttpUser:   s.getEscapeString("u"),
+			//HttpPasswd: s.getEscapeString("p"),
+			//Cnf: &models.Config{
+			//	User:     s.getEscapeString("u"),
+			//	Passwd:   s.getEscapeString("p"),
+			//	Compress: common.GetBoolByStr(s.getEscapeString("compress")),
+			//	Crypt:    s.GetBoolNoErr("crypt"),
+			//},
+			//AllowUseConfigFile: s.GetBoolNoErr("config_conn_allow"),
+			AllowUseConfigFile: false, //不允许用户使用配置文件登录
+			RateLimit:          int(s.GetIntNoErr("rate_limit")),
+			MaxConn:            int(s.GetIntNoErr("max_conn")),
+			Compress:           common.GetBoolByStr(s.getEscapeString("compress")),
+			Crypt:              s.GetBoolNoErr("crypt"),
+
+			HttpUser:     s.getEscapeString("web_username"),
+			HttpPasswd:   s.getEscapeString("web_password"),
+			MaxTunnelNum: int(s.GetIntNoErr("max_tunnel")),
+			Flow: &models.Flow{
 				ExportFlow: 0,
 				InletFlow:  0,
 				FlowLimit:  int64(s.GetIntNoErr("flow_limit")),
 			},
-			BlackIpList: RemoveRepeatedElement(strings.Split(s.getEscapeString("blackiplist"), "\r\n")),
+			//BlackIpList: RemoveRepeatedElement(strings.Split(s.getEscapeString("blackiplist"), "\r\n")),
 		}
-		if err := file.GetDb().NewClient(t); err != nil {
+		if err := database.GetDb().NewClient(t); err != nil {
 			s.AjaxErr(err.Error())
 		}
-		s.AjaxOkWithId("add success", id)
+		s.AjaxOkWithId("add success", t.Id)
 	}
 }
 func (s *ClientController) GetClient() {
 	if s.Ctx.Request.Method == "POST" {
 		id := s.GetIntNoErr("id")
 		data := make(map[string]interface{})
-		if c, err := file.GetDb().GetClient(id); err != nil {
+		if c, err := database.GetDb().GetClientById(id); err != nil {
 			data["code"] = 0
 		} else {
 			data["code"] = 1
@@ -95,48 +102,49 @@ func (s *ClientController) Edit() {
 	id := s.GetIntNoErr("id")
 	if s.Ctx.Request.Method == "GET" {
 		s.Data["menu"] = "client"
-		if c, err := file.GetDb().GetClient(id); err != nil {
+		if c, err := database.GetDb().GetClientById(id); err != nil {
 			s.error()
 		} else {
 			s.Data["c"] = c
-			s.Data["BlackIpList"] = strings.Join(c.BlackIpList, "\r\n")
+			//s.Data["BlackIpList"] = strings.Join(c.BlackIpList, "\r\n")
+			//s.Data["BlackIpList"] = strings.Join(c.BlackIpList, "\r\n")
 		}
 		s.SetInfo("edit client")
 		s.display()
 	} else {
-		if c, err := file.GetDb().GetClient(id); err != nil {
+		if c, err := database.GetDb().GetClientById(id); err != nil {
 			s.error()
 			s.AjaxErr("client ID not found")
 			return
 		} else {
 			if s.getEscapeString("web_username") != "" {
-				if s.getEscapeString("web_username") == beego.AppConfig.String("web_username") || !file.GetDb().VerifyUserName(s.getEscapeString("web_username"), c.Id) {
+				if s.getEscapeString("web_username") == beego.AppConfig.String("web_username") || !database.GetDb().VerifyUserName(s.getEscapeString("web_username"), c.Id) {
 					s.AjaxErr("web login username duplicate, please reset")
 					return
 				}
 			}
 			if s.GetSession("isAdmin").(bool) {
-				if !file.GetDb().VerifyVkey(s.getEscapeString("vkey"), c.Id) {
+				if !database.GetDb().VerifyVkey(s.getEscapeString("vkey"), c.Id) {
 					s.AjaxErr("Vkey duplicate, please reset")
 					return
 				}
 				c.VerifyKey = s.getEscapeString("vkey")
 				c.Flow.FlowLimit = int64(s.GetIntNoErr("flow_limit"))
-				c.RateLimit = s.GetIntNoErr("rate_limit")
-				c.MaxConn = s.GetIntNoErr("max_conn")
-				c.MaxTunnelNum = s.GetIntNoErr("max_tunnel")
+				c.RateLimit = int(s.GetIntNoErr("rate_limit"))
+				c.MaxConn = int(int32(s.GetIntNoErr("max_conn")))
+				c.MaxTunnelNum = int(s.GetIntNoErr("max_tunnel"))
 			}
-			c.Remark = s.getEscapeString("remark")
-			c.Cnf.User = s.getEscapeString("u")
-			c.Cnf.Passwd = s.getEscapeString("p")
-			c.Cnf.Compress = common.GetBoolByStr(s.getEscapeString("compress"))
-			c.Cnf.Crypt = s.GetBoolNoErr("crypt")
+			c.Name = s.getEscapeString("remark")
+			c.HttpUser = s.getEscapeString("u")
+			c.HttpPasswd = s.getEscapeString("p")
+			c.Compress = common.GetBoolByStr(s.getEscapeString("compress"))
+			c.Crypt = s.GetBoolNoErr("crypt")
 			b, err := beego.AppConfig.Bool("allow_user_change_username")
 			if s.GetSession("isAdmin").(bool) || (err == nil && b) {
-				c.WebUserName = s.getEscapeString("web_username")
+				c.HttpUser = s.getEscapeString("web_username")
 			}
-			c.WebPassword = s.getEscapeString("web_password")
-			c.ConfigConnAllow = s.GetBoolNoErr("config_conn_allow")
+			c.HttpPasswd = s.getEscapeString("web_password")
+			c.AllowUseConfigFile = s.GetBoolNoErr("config_conn_allow")
 			if c.Rate != nil {
 				c.Rate.Stop()
 			}
@@ -147,9 +155,9 @@ func (s *ClientController) Edit() {
 				c.Rate = rate.NewRate(int64(2 << 23))
 				c.Rate.Start()
 			}
-
-			c.BlackIpList = RemoveRepeatedElement(strings.Split(s.getEscapeString("blackiplist"), "\r\n"))
-			file.GetDb().JsonDb.StoreClientsToJsonFile()
+			//TODO:黑名单管理需要重构
+			//c.BlackIpList = RemoveRepeatedElement(strings.Split(s.getEscapeString("blackiplist"), "\r\n"))
+			database.GetDb().UpdateClientById(c, c.Id)
 		}
 		s.AjaxOk("save success")
 	}
@@ -175,9 +183,9 @@ func RemoveRepeatedElement(arr []string) (newArr []string) {
 // 更改状态
 func (s *ClientController) ChangeStatus() {
 	id := s.GetIntNoErr("id")
-	if client, err := file.GetDb().GetClient(id); err == nil {
-		client.Status = s.GetBoolNoErr("status")
-		if client.Status == false {
+	if client, err := database.GetDb().GetClientById(id); err == nil {
+		client.Valid = s.GetBoolNoErr("status")
+		if client.Valid == false {
 			server.DelClientConnect(client.Id)
 		}
 		s.AjaxOk("modified success")
@@ -188,7 +196,7 @@ func (s *ClientController) ChangeStatus() {
 // 删除客户端
 func (s *ClientController) Del() {
 	id := s.GetIntNoErr("id")
-	if err := file.GetDb().DelClient(id); err != nil {
+	if err := database.GetDb().DelClient(id); err != nil {
 		s.AjaxErr("delete error")
 	}
 	//server.DelTunnelAndHostByClientId(id, false)

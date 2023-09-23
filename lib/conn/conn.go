@@ -15,12 +15,12 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"xnps/lib/database/models"
 	"xnps/lib/goroutine"
 
 	"github.com/xtaci/kcp-go"
 	"xnps/lib/common"
 	"xnps/lib/crypt"
-	"xnps/lib/file"
 	"xnps/lib/pmux"
 	"xnps/lib/rate"
 )
@@ -127,7 +127,7 @@ func (s *Conn) GetLen() (int, error) {
 
 func (s *Conn) WriteLenContent(buf []byte) (err error) {
 	var b []byte
-	if b, err = GetLenBytes(buf); err != nil {
+	if b, err = GetLengthAndBytes(buf); err != nil {
 		return
 	}
 	return binary.Write(s.Conn, binary.LittleEndian, b)
@@ -139,7 +139,7 @@ func (s *Conn) ReadFlag() (string, error) {
 	return string(buf), binary.Read(s, binary.LittleEndian, &buf)
 }
 
-// set alive
+// set alive and begin to clog
 func (s *Conn) SetAlive(tp string) {
 	switch s.Conn.(type) {
 	case *kcp.UDPSession:
@@ -197,27 +197,28 @@ func (s *Conn) GetHealthInfo() (info string, status bool, err error) {
 	return "", false, errors.New("receive health info error")
 }
 
+// TODO:获取配置信息？还是新建空信息
 // get task info
-func (s *Conn) GetConfigInfo() (c *file.Client, err error) {
+func (s *Conn) GetConfigInfo() (c *models.Client, err error) {
 	err = s.getInfo(&c)
-	c.NoStore = true
-	c.Status = true
+	c.Valid = true
+	c.Connected = true
 	if c.Flow == nil {
-		c.Flow = new(file.Flow)
+		c.Flow = new(models.Flow)
 	}
-	c.NoDisplay = false
+	//c.NoDisplay = false
 	return
 }
 
 // get task info
 // get task info
-func (s *Conn) GetTaskInfo() (t *file.Tunnel, err error) {
+func (s *Conn) GetTunnelInfo() (t *models.Tunnel, err error) {
 	//t = new(file.Tunnel)
 	err = s.getInfo(&t)
-	t.Id = int(file.GetDb().JsonDb.GetTaskId())
+	//t.Id = database.GetDb().JsonDb.GetTaskId()
 	t.NoStore = true
-	t.Flow = new(file.Flow)
-	t.Target = new(file.Target)
+	t.Flow = new(models.Flow)
+	t.Target = new(models.Target)
 	//TODO:这里判断白名单端口
 	//t.Target.TargetStr = beego.AppConfig.String("allow_ports")
 	//if len(t.Target.TargetStr) < 2 {
@@ -244,7 +245,7 @@ func (s *Conn) SendInfo(t interface{}, flag string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	lenBytes, err := GetLenBytes(b)
+	lenBytes, err := GetLengthAndBytes(b)
 	if err != nil {
 		return 0, err
 	}
@@ -262,6 +263,7 @@ func (s *Conn) getInfo(t interface{}) (err error) {
 	} else if _, err = s.ReadLen(l, buf); err != nil {
 		return
 	} else {
+		//客户端向服务端发送的信息，使用的是json格式
 		json.Unmarshal(buf[:l], &t)
 	}
 	return
@@ -321,6 +323,7 @@ func (s *Conn) WriteAddOk() error {
 	return binary.Write(s.Conn, binary.LittleEndian, true)
 }
 
+// 添加隧道失败
 func (s *Conn) WriteAddFail() error {
 	defer s.Close()
 	return binary.Write(s.Conn, binary.LittleEndian, false)
@@ -347,7 +350,7 @@ func (s *Conn) SetReadDeadline(t time.Time) error {
 }
 
 // get the assembled amount data(len 4 and content)
-func GetLenBytes(buf []byte) (b []byte, err error) {
+func GetLengthAndBytes(buf []byte) (b []byte, err error) {
 	raw := bytes.NewBuffer([]byte{})
 	if err = binary.Write(raw, binary.LittleEndian, int32(len(buf))); err != nil {
 		return
@@ -373,7 +376,7 @@ func SetUdpSession(sess *kcp.UDPSession) {
 
 // conn1 mux conn
 func CopyWaitGroup(conn1, conn2 net.Conn, encrypt bool, snappy bool, rate *rate.Rate,
-	flow *file.Flow, isServer bool, rb []byte, task *file.Tunnel) {
+	flow *models.Flow, isServer bool, rb []byte, task *models.Tunnel) {
 	//var in, out int64
 	//var wg sync.WaitGroup
 	connHandle := GetConn(conn1, encrypt, snappy, rate, isServer)

@@ -7,10 +7,11 @@ import (
 	"net"
 	"sync"
 	"time"
+	"xnps/lib/database/models"
 
 	"github.com/astaxie/beego"
 	"xnps/lib/common"
-	"xnps/lib/file"
+	"xnps/lib/database"
 	"xnps/server"
 )
 
@@ -62,8 +63,10 @@ func (self *LoginController) Verify() {
 	self.ServeJSON()
 }
 
+// TODO:登录逻辑需要重构
+// 原本可能是为了实现多用户，但是，没有完全实现，留下了后门，但凡获得了一个客户端的权限
 func (self *LoginController) doLogin(username, password string, explicit bool) bool {
-	clearIprecord()
+	clearIpRecord()
 	ip, _, _ := net.SplitHostPort(self.Ctx.Request.RemoteAddr)
 	if v, ok := ipRecord.Load(ip); ok {
 		vv := v.(*record)
@@ -83,30 +86,34 @@ func (self *LoginController) doLogin(username, password string, explicit bool) b
 		server.Bridge.Register.Store(common.GetIpByAddr(self.Ctx.Input.IP()), time.Now().Add(time.Hour*time.Duration(2)))
 	}
 	b, err := beego.AppConfig.Bool("allow_user_login")
+	//TODO:这个地方需要理解一下
+	//允许客户用户登录
+	//这个地方去掉，不允许多用户登录
 	if err == nil && b && !auth {
-		file.GetDb().JsonDb.Clients.Range(func(key, value interface{}) bool {
-			v := value.(*file.Client)
-			if !v.Status || v.NoDisplay {
-				return true
-			}
-			if v.WebUserName == "" && v.WebPassword == "" {
-				if username != "user" || v.VerifyKey != password {
-					return true
-				} else {
-					auth = true
-				}
-			}
-			if !auth && v.WebPassword == password && v.WebUserName == username {
-				auth = true
-			}
-			if auth {
-				self.SetSession("isAdmin", false)
-				self.SetSession("clientId", v.Id)
-				self.SetSession("username", v.WebUserName)
-				return false
-			}
-			return true
-		})
+		//database.GetDb().JsonDb.Clients.Range(func(key, value interface{}) bool {
+		//	v := value.(*models.Client)
+		//	if !v.Status || v.Valid {
+		//		return true
+		//	}
+		//	if v.HttpUser == "" && v.HttpPasswd == "" {
+		//		//为什么是 VerifyKey！=password
+		//		if username != "user" || v.VerifyKey != password {
+		//			return true
+		//		} else {
+		//			auth = true
+		//		}
+		//	}
+		//	if !auth && v.HttpUser == password && v.HttpPasswd == username {
+		//		auth = true
+		//	}
+		//	if auth {
+		//		self.SetSession("isAdmin", false)
+		//		self.SetSession("clientId", v.Id)
+		//		self.SetSession("username", v.HttpUser)
+		//		return false
+		//	}
+		//	return true
+		//})
 	}
 	if auth {
 		self.SetSession("auth", true)
@@ -137,15 +144,15 @@ func (self *LoginController) Register() {
 			self.ServeJSON()
 			return
 		}
-		t := &file.Client{
-			Id:          int(file.GetDb().JsonDb.GetClientId()),
-			Status:      true,
-			Cnf:         &file.Config{},
-			WebUserName: self.GetString("username"),
-			WebPassword: self.GetString("password"),
-			Flow:        &file.Flow{},
+		t := &models.Client{
+			//Id:         database.GetDb().JsonDb.GetClientId(),
+			Valid: true,
+			//Cnf:        &models.Config{},
+			HttpUser:   self.GetString("username"),
+			HttpPasswd: self.GetString("password"),
+			Flow:       &models.Flow{},
 		}
-		if err := file.GetDb().NewClient(t); err != nil {
+		if err := database.GetDb().NewClient(t); err != nil {
 			self.Data["json"] = map[string]interface{}{"status": 0, "msg": err.Error()}
 		} else {
 			self.Data["json"] = map[string]interface{}{"status": 1, "msg": "register success"}
@@ -159,9 +166,8 @@ func (self *LoginController) Out() {
 	self.Redirect(beego.AppConfig.String("web_base_url")+"/login/index", 302)
 }
 
-func clearIprecord() {
-	rand.Seed(time.Now().UnixNano())
-	x := rand.Intn(100)
+func clearIpRecord() {
+	x := rand.New(rand.NewSource(time.Now().UnixNano())).Intn(100)
 	if x == 1 {
 		ipRecord.Range(func(key, value interface{}) bool {
 			v := value.(*record)

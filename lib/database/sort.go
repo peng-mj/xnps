@@ -31,7 +31,7 @@ func (p PairList) Less(i, j int) bool {
 func sortClientByKey(m sync.Map, sortKey, order string) (res []int) {
 	p := make(PairList, 0)
 	m.Range(func(key, value interface{}) bool {
-		p = append(p, &Pair{sortKey, value.(*models.Client).Id, order, value.(*models.Client).Flow})
+		p = append(p, &Pair{sortKey, int(value.(*models.Client).Id), order, value.(*models.Client).Flow})
 		return true
 	})
 	sort.Sort(p)

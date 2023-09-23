@@ -4,22 +4,23 @@ import (
 	"log"
 	"path/filepath"
 	"strconv"
+	"xnps/lib/database/models"
 
 	"github.com/astaxie/beego"
 	"xnps/lib/common"
-	"xnps/lib/file"
+	"xnps/lib/database"
 )
 
 func TestServerConfig() {
 	var postTcpArr []int
 	var postUdpArr []int
-	file.GetDb().JsonDb.Tasks.Range(func(key, value interface{}) bool {
-		v := value.(*file.Tunnel)
+	database.GetDb().JsonDb.Tasks.Range(func(key, value interface{}) bool {
+		v := value.(*models.Tunnel)
 		if v.Mode == "udp" {
-			isInArr(&postUdpArr, v.Port, v.Remark, "udp")
-		} else if v.Port != 0 {
+			isInArr(&postUdpArr, v.ServerPort, v.Remark, "udp")
+		} else if v.ServerPort != 0 {
 
-			isInArr(&postTcpArr, v.Port, v.Remark, "tcp")
+			isInArr(&postTcpArr, v.ServerPort, v.Remark, "tcp")
 		}
 		return true
 	})

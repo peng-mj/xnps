@@ -15,7 +15,7 @@ import (
 	"xnps/lib/cache"
 	"xnps/lib/common"
 	"xnps/lib/conn"
-	"xnps/lib/file"
+	"xnps/lib/database/models"
 	"xnps/server/connection"
 )
 
@@ -32,10 +32,10 @@ type httpServer struct {
 	cacheLen      int
 }
 
-func NewHttp(bridge *bridge.Bridge, c *file.Tunnel, httpPort, httpsPort int, useCache bool, cacheLen int, addOrigin bool) *httpServer {
+func NewHttp(bridge *bridge.Bridge, c *models.Tunnel, httpPort, httpsPort int, useCache bool, cacheLen int, addOrigin bool) *httpServer {
 	httpServer := &httpServer{
 		BaseServer: BaseServer{
-			task:   c,
+			tunnel: c,
 			bridge: bridge,
 			Mutex:  sync.Mutex{},
 		},
@@ -188,7 +188,7 @@ func (s *httpServer) handleHttpHost(c *conn.Conn, r *http.Request) {
 			}
 		}()
 
-		//err1 := goroutine.CopyBuffer(c, connClient, host.Client.Flow, nil, "")
+		//err1 := goroutine.CopyConnectionBuffer(c, connClient, host.Client.Flow, nil, "")
 		//if err1 != nil {
 		//	return
 		//}

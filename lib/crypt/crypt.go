@@ -8,8 +8,8 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"github.com/oklog/ulid/v2"
 	"math/rand"
-	"strconv"
 	"time"
 )
 
@@ -58,7 +58,13 @@ func PKCS5UnPadding(origData []byte) (error, []byte) {
 	return nil, origData[:(length - unpadding)]
 }
 
-// Generate 32-bit MD5 strings
+// Generate 256-bit sha256 strings
+func Sha256(s string) string {
+	sha := sha256.New()
+	sha.Write([]byte(s))
+	return hex.EncodeToString(sha.Sum(nil))
+}
+
 func Md5(s string) string {
 	h := md5.New()
 	h.Write([]byte(s))
@@ -76,18 +82,14 @@ func GetRandomString(l int) string {
 	}
 	return string(result)
 }
+
+// 32位输出,可排序，唯一，随机
 func GenerateRandomVKey() string {
-	str := `0123456789abcdefghijklmnopqrstuvwxyzQWERTYUIOPASDFGHJKLZXCVBNM@#$<>!|+=-_*^&%`
-	bts := []byte(str)
-	var result []byte
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	for i := 0; i < 20; i++ {
-		result = append(result, bts[r.Intn(len(bts))])
-	}
-	pre := strconv.FormatInt(time.Now().UnixMicro(), 10)
-	str = string(result) + "_" + pre
-	sh := sha256.New()
-	sh.Write([]byte(str))
-	co := hex.EncodeToString(sh.Sum(nil))
-	return co
+	entropy := ulid.Monotonic(rand.New(rand.NewSource(time.Now().UnixNano())), 0)
+	out := ulid.MustNew(ulid.Timestamp(time.Now()), entropy).String() + GetRandomString(6)
+	return out
+}
+func GetUlid() string {
+	entropy := ulid.Monotonic(rand.New(rand.NewSource(time.Now().UnixNano())), 0)
+	return ulid.MustNew(ulid.Timestamp(time.Now()), entropy).String()
 }

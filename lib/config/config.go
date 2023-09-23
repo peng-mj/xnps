@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"xnps/lib/database/models"
 
 	"xnps/lib/common"
-	"xnps/lib/file"
+	"xnps/lib/database"
 )
 
 type CommonConfig struct {
@@ -16,7 +17,7 @@ type CommonConfig struct {
 	Tp               string //bridgeType kcp or tcp
 	AutoReconnection bool
 	ProxyUrl         string
-	Client           *file.Client
+	Client           *models.Client
 	DisconnectTime   int
 }
 
@@ -33,7 +34,7 @@ type Config struct {
 	title        []string
 	CommonConfig *CommonConfig
 	//Hosts        []*file.Host
-	Tasks []*file.Tunnel
+	Tasks []*models.Tunnel
 	//Healths     []*file.Health
 	LocalServer []*LocalServer
 }
@@ -86,7 +87,7 @@ func NewConfig(path string) (c *Config, err error) {
 			default:
 				if strings.Index(nowContent, "host") > -1 {
 					//h := dealHost(nowContent)
-					//h.Remark = getTitleContent(c.title[i])
+					//h.Name = getTitleContent(c.title[i])
 					//c.Hosts = append(c.Hosts, h)
 				} else {
 					t := dealTunnel(nowContent)
@@ -106,8 +107,8 @@ func getTitleContent(s string) string {
 
 func dealCommon(s string) *CommonConfig {
 	c := &CommonConfig{}
-	c.Client = file.NewClient("", true, true)
-	c.Client.Cnf = new(file.Config)
+	c.Client = database.NewClient("", true, true)
+	//c.Client.Cnf = new(models.Config)
 	for _, v := range splitStr(s) {
 		item := strings.Split(v, "=")
 		if len(item) == 0 {
@@ -125,17 +126,17 @@ func dealCommon(s string) *CommonConfig {
 		case "auto_reconnection":
 			c.AutoReconnection = common.GetBoolByStr(item[1])
 		case "basic_username":
-			c.Client.Cnf.User = item[1]
+			c.Client.HttpUser = item[1]
 		case "basic_password":
-			c.Client.Cnf.Passwd = item[1]
+			c.Client.HttpPasswd = item[1]
 		case "web_password":
-			c.Client.WebPassword = item[1]
+			c.Client.HttpPasswd = item[1]
 		case "web_username":
-			c.Client.WebUserName = item[1]
+			c.Client.HttpUser = item[1]
 		case "compress":
-			c.Client.Cnf.Compress = common.GetBoolByStr(item[1])
+			c.Client.Compress = common.GetBoolByStr(item[1])
 		case "crypt":
-			c.Client.Cnf.Crypt = common.GetBoolByStr(item[1])
+			c.Client.Crypt = common.GetBoolByStr(item[1])
 		case "proxy_url":
 			c.ProxyUrl = item[1]
 		case "rate_limit":
@@ -145,7 +146,7 @@ func dealCommon(s string) *CommonConfig {
 		case "max_conn":
 			c.Client.MaxConn = common.GetIntNoErrByStr(item[1])
 		case "remark":
-			c.Client.Remark = item[1]
+			c.Client.Name = item[1]
 		case "pprof_addr":
 			common.InitPProfFromArg(item[1])
 		case "disconnect_timeout":
@@ -216,9 +217,9 @@ func dealCommon(s string) *CommonConfig {
 //	return h
 //}
 
-func dealTunnel(s string) *file.Tunnel {
-	t := &file.Tunnel{}
-	t.Target = new(file.Target)
+func dealTunnel(s string) *models.Tunnel {
+	t := &models.Tunnel{}
+	t.Target = new(models.Target)
 	for _, v := range splitStr(s) {
 		item := strings.Split(v, "=")
 		if len(item) == 0 {

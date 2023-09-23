@@ -28,6 +28,7 @@ import (
 	"xnps/lib/version"
 )
 
+// 获取运行状态
 func GetTaskStatus(path string) {
 	cnf, err := config.NewConfig(path)
 	if err != nil {
@@ -43,7 +44,7 @@ func GetTaskStatus(path string) {
 	//read now vKey and write to server
 	if f, err := common.ReadAllFromFile(filepath.Join(common.GetTmpPath(), "npc_vkey.txt")); err != nil {
 		log.Fatalln(err)
-	} else if _, err := c.Write([]byte(crypt.Md5(string(f)))); err != nil {
+	} else if _, err := c.Write([]byte(crypt.Sha256(string(f)))); err != nil {
 		log.Fatalln(err)
 	}
 	var isPub bool
@@ -60,10 +61,10 @@ func GetTaskStatus(path string) {
 			if v.Mode == "secret" {
 				ports = append(ports, 0)
 			}
-			for _, vv := range ports {
+			for _, port := range ports {
 				var remark string
 				if len(ports) > 1 {
-					remark = v.Remark + "_" + strconv.Itoa(vv)
+					remark = v.Remark + "_" + strconv.Itoa(port)
 				} else {
 					remark = v.Remark
 				}
@@ -164,22 +165,23 @@ re:
 	}
 
 	c.Close()
-	if cnf.CommonConfig.Client.WebUserName == "" || cnf.CommonConfig.Client.WebPassword == "" {
+	if cnf.CommonConfig.Client.HttpUser == "" || cnf.CommonConfig.Client.HttpPasswd == "" {
 		logs.Notice("web access login username:user password:%s", vkey)
 	} else {
-		logs.Notice("web access login username:%s password:%s", cnf.CommonConfig.Client.WebUserName, cnf.CommonConfig.Client.WebPassword)
+		logs.Notice("web access login username:%s password:%s", cnf.CommonConfig.Client.HttpUser, cnf.CommonConfig.Client.HttpPasswd)
 	}
 	NewRPClient(cnf.CommonConfig.Server, vkey, cnf.CommonConfig.Tp, cnf.CommonConfig.ProxyUrl, cnf, cnf.CommonConfig.DisconnectTime).Start()
 	CloseLocalServer()
 	goto re
 }
 
+// 所有的连接创建，都会进行验证
 // Create a new connection with the server and verify it
-func NewConn(tp string, vkey string, server string, connType string, proxyUrl string) (*conn.Conn, error) {
+func NewConn(bridgeType string, vkey string, serverIp string, connType string, proxyUrl string) (*conn.Conn, error) {
 	var err error
 	var connection net.Conn
 	var sess *kcp.UDPSession
-	if tp == "tcp" {
+	if bridgeType == "tcp" {
 		if proxyUrl != "" {
 			u, er := url.Parse(proxyUrl)
 			if er != nil {
@@ -191,15 +193,15 @@ func NewConn(tp string, vkey string, server string, connType string, proxyUrl st
 				if er != nil {
 					return nil, er
 				}
-				connection, err = n.Dial("tcp", server)
+				connection, err = n.Dial("tcp", serverIp)
 			default:
-				connection, err = NewHttpProxyConn(u, server)
+				connection, err = NewHttpProxyConn(u, serverIp)
 			}
 		} else {
-			connection, err = net.Dial("tcp", server)
+			connection, err = net.Dial("tcp", serverIp)
 		}
 	} else {
-		sess, err = kcp.DialWithOptions(server, nil, 10, 3)
+		sess, err = kcp.DialWithOptions(serverIp, nil, 10, 3)
 		if err == nil {
 			conn.SetUdpSession(sess)
 			connection = sess
@@ -211,6 +213,15 @@ func NewConn(tp string, vkey string, server string, connType string, proxyUrl st
 	connection.SetDeadline(time.Now().Add(time.Second * 10))
 	defer connection.SetDeadline(time.Time{})
 	c := conn.NewConn(connection)
+	/*
+		The task info is formed as follows:
+		+----+-----+---------+
+		|type| len | content |
+		+----+---------------+
+		| 4  |  4  |   ...   |
+		+----+---------------+
+	*/
+	//尝试连接
 	if _, err := c.Write([]byte(common.CONN_TEST)); err != nil {
 		return nil, err
 	}
@@ -220,16 +231,17 @@ func NewConn(tp string, vkey string, server string, connType string, proxyUrl st
 	if err := c.WriteLenContent([]byte(version.VERSION)); err != nil {
 		return nil, err
 	}
-	b, err := c.GetShortContent(32)
+	//因为使用了sha256加密，所以，长度从32修改为64
+	b, err := c.GetShortContent(64)
 	if err != nil {
 		logs.Error(err)
 		return nil, err
 	}
-	if crypt.Md5(version.GetCoreVersion()) != string(b) {
-		logs.Error("The client does not match the server version. The current core version of the client is", version.GetCoreVersion())
+	if crypt.Sha256(version.GetCoreVersion()) != string(b) {
+		logs.Error("The client does not match the serverIp version. The current core version of the client is", version.GetCoreVersion())
 		return nil, err
 	}
-	if _, err := c.Write([]byte(common.Getverifyval(vkey))); err != nil {
+	if _, err := c.Write([]byte(common.GetVerifyValue(vkey))); err != nil {
 		return nil, err
 	}
 	if s, err := c.ReadFlag(); err != nil {
@@ -240,7 +252,7 @@ func NewConn(tp string, vkey string, server string, connType string, proxyUrl st
 	if _, err := c.Write([]byte(connType)); err != nil {
 		return nil, err
 	}
-	c.SetAlive(tp)
+	c.SetAlive(bridgeType)
 
 	return c, nil
 }

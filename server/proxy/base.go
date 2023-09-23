@@ -6,12 +6,12 @@ import (
 	"net/http"
 	"sort"
 	"sync"
+	"xnps/lib/database/models"
 
 	"github.com/astaxie/beego/logs"
 	"xnps/bridge"
 	"xnps/lib/common"
 	"xnps/lib/conn"
-	"xnps/lib/file"
 )
 
 type Service interface {
@@ -20,22 +20,22 @@ type Service interface {
 }
 
 type NetBridge interface {
-	SendLinkInfo(clientId int, link *conn.Link, t *file.Tunnel) (target net.Conn, err error)
+	SendLinkInfo(clientId int64, link *conn.Link, t *models.Tunnel) (target net.Conn, err error)
 }
 
 // BaseServer struct
 type BaseServer struct {
 	id           int
 	bridge       NetBridge
-	task         *file.Tunnel
+	tunnel       *models.Tunnel
 	errorContent []byte
 	sync.Mutex
 }
 
-func NewBaseServer(bridge *bridge.Bridge, task *file.Tunnel) *BaseServer {
+func NewBaseServer(brg *bridge.Bridge, task *models.Tunnel) *BaseServer {
 	return &BaseServer{
-		bridge:       bridge,
-		task:         task,
+		bridge:       brg,
+		tunnel:       task,
 		errorContent: nil,
 		Mutex:        sync.Mutex{},
 	}
@@ -45,8 +45,8 @@ func NewBaseServer(bridge *bridge.Bridge, task *file.Tunnel) *BaseServer {
 func (s *BaseServer) FlowAdd(in, out int64) {
 	s.Lock()
 	defer s.Unlock()
-	s.task.Flow.ExportFlow += out
-	s.task.Flow.InletFlow += in
+	s.tunnel.Flow.ExportFlow += out
+	s.tunnel.Flow.InletFlow += in
 }
 
 // write fail bytes to the connection
@@ -66,7 +66,7 @@ func (s *BaseServer) auth(r *http.Request, c *conn.Conn, u, p string) error {
 }
 
 // check flow limit of the client ,and decrease the allow num of client
-func (s *BaseServer) CheckFlowAndConnNum(client *file.Client) error {
+func (s *BaseServer) CheckFlowAndConnNum(client *models.Client) error {
 	if client.Flow.FlowLimit > 0 && (client.Flow.FlowLimit<<20) < (client.Flow.ExportFlow+client.Flow.InletFlow) {
 		return errors.New("Traffic exceeded")
 	}
@@ -87,17 +87,17 @@ func in(target string, strArray []string) bool {
 }
 
 // create a new connection and start bytes copying
-func (s *BaseServer) DealClient(c *conn.Conn, client *file.Client, addr string,
-	rb []byte, tp string, f func(), flow *file.Flow, localProxy bool, task *file.Tunnel) error {
+func (s *BaseServer) DealClient(c *conn.Conn, client *models.Client, addr string,
+	rb []byte, tp string, f func(), flow *models.Flow, localProxy bool, task *models.Tunnel) error {
 
 	// TODO: 判断访问地址是否在黑名单内
-	if common.IsBlackIp(c.RemoteAddr().String(), client.VerifyKey, client.BlackIpList) {
+	if common.IsBlackIp(c.RemoteAddr().String(), client.VerifyKey) {
 		c.Close()
 		return nil
 	}
 
-	link := conn.NewLink(tp, addr, client.Cnf.Crypt, client.Cnf.Compress, c.Conn.RemoteAddr().String(), localProxy)
-	if target, err := s.bridge.SendLinkInfo(client.Id, link, s.task); err != nil {
+	link := conn.NewLink(tp, addr, client.Crypt, client.Compress, c.Conn.RemoteAddr().String(), localProxy)
+	if target, err := s.bridge.SendLinkInfo(client.Id, link, s.tunnel); err != nil {
 		logs.Warn("get connection from client id %d  error %s", client.Id, err.Error())
 		c.Close()
 		return err

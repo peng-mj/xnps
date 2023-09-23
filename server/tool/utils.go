@@ -52,6 +52,14 @@ func TestServerPort(p int, m string) (b bool) {
 	return
 }
 
+func StrToInt64(s string, def ...int64) int64 {
+	out, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return def[0]
+	}
+	return out
+}
+
 // TODO:设置端口范围 端口不能这样使用随机数生成，应该在某一范围内随机顺序生成
 func GenerateServerPort(m string) int {
 	for {

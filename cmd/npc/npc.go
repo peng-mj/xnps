@@ -16,7 +16,7 @@ import (
 	"xnps/client"
 	"xnps/lib/common"
 	"xnps/lib/config"
-	"xnps/lib/file"
+	"xnps/lib/database/models"
 	"xnps/lib/install"
 	"xnps/lib/version"
 )
@@ -222,8 +222,8 @@ func run() {
 		localServer.Password = *password
 		localServer.Target = *target
 		localServer.Port = *localPort
-		commonConfig.Client = new(file.Client)
-		commonConfig.Client.Cnf = new(file.Config)
+		commonConfig.Client = new(models.Client)
+		//commonConfig.Client.Cnf = new(models.Config)
 		go client.StartLocalServer(localServer, commonConfig)
 		return
 	}

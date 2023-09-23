@@ -1,7 +1,8 @@
 package controllers
 
 import (
-	"xnps/lib/file"
+	"xnps/lib/database"
+	"xnps/lib/database/models"
 	"xnps/server"
 	"xnps/server/tool"
 
@@ -81,7 +82,7 @@ func (s *IndexController) GetTunnel() {
 	start, length := s.GetAjaxParams()
 	taskType := s.getEscapeString("type")
 	clientId := s.GetIntNoErr("client_id")
-	list, cnt := server.GetTunnel(start, length, taskType, clientId, s.getEscapeString("search"))
+	list, cnt := server.GetTunnel(int(start), int(length), taskType, clientId, s.getEscapeString("search"))
 	s.AjaxTable(list, cnt, cnt, nil)
 }
 
@@ -92,49 +93,53 @@ func (s *IndexController) Add() {
 		s.SetInfo("add tunnel")
 		s.display()
 	} else {
-		id := int(file.GetDb().JsonDb.GetTaskId())
-		t := &file.Tunnel{
-			Port:      s.GetIntNoErr("port"),
-			ServerIp:  s.getEscapeString("server_ip"),
-			Mode:      s.getEscapeString("type"),
-			Target:    &file.Target{TargetStr: s.getEscapeString("target"), LocalProxy: s.GetBoolNoErr("local_proxy")},
-			Id:        id,
-			Status:    true,
-			Remark:    s.getEscapeString("remark"),
+		//id := database.GetDb().JsonDb.GetTaskId()
+		t := &models.Tunnel{
+			ServerPort: int(s.GetIntNoErr("port")),
+			ServerIp:   s.getEscapeString("server_ip"),
+			Mode:       s.getEscapeString("type"),
+			Target:     &models.Target{TargetStr: s.getEscapeString("target"), LocalProxy: s.GetBoolNoErr("local_proxy")},
+			//Id:       id, //切换gorm后，id自动添加，而不手动生成
+			Status: true,
+			Remark: s.getEscapeString("remark"),
+			//TODO:将密码修改为Sha256存储
+			//前端传输的时候，需要加密为sha256
 			Password:  s.getEscapeString("password"),
 			LocalPath: s.getEscapeString("local_path"),
 			StripPre:  s.getEscapeString("strip_pre"),
-			Flow:      &file.Flow{},
+			Flow:      &models.Flow{},
 		}
 
-		if t.Port <= 0 {
-			t.Port = tool.GenerateServerPort(t.Mode)
+		if t.ServerPort <= 0 {
+			t.ServerPort = tool.GenerateServerPort(t.Mode)
 		}
 
-		if !tool.TestServerPort(t.Port, t.Mode) {
+		if !tool.TestServerPort(t.ServerPort, t.Mode) {
 			s.AjaxErr("The port cannot be opened because it may has been occupied or is no longer allowed.")
 		}
 		var err error
-		if t.Client, err = file.GetDb().GetClient(s.GetIntNoErr("client_id")); err != nil {
+		if t.Client, err = database.GetDb().GetClientById(s.GetIntNoErr("client_id")); err != nil {
 			s.AjaxErr(err.Error())
 		}
-		if t.Client.MaxTunnelNum != 0 && t.Client.GetTunnelNum() >= t.Client.MaxTunnelNum {
+		//判断添加的通道数量是否超限制
+		if t.Client.MaxTunnelNum != 0 && database.GetDb().GetAllTunnelNumById(t.ClientId) >= t.Client.MaxTunnelNum {
+			//if t.Client.MaxTunnelNum != 0 && t.Client.GetTunnelNum() >= t.Client.MaxTunnelNum {
 			s.AjaxErr("The number of tunnels exceeds the limit")
 		}
-		if err := file.GetDb().NewTask(t); err != nil {
+		if err := database.GetDb().NewTask(t); err != nil {
 			s.AjaxErr(err.Error())
 		}
 		if err := server.AddTask(t); err != nil {
 			s.AjaxErr(err.Error())
 		} else {
-			s.AjaxOkWithId("add success", id)
+			s.AjaxOkWithId("add success", t.Id)
 		}
 	}
 }
 func (s *IndexController) GetOneTunnel() {
 	id := s.GetIntNoErr("id")
 	data := make(map[string]interface{})
-	if t, err := file.GetDb().GetTask(id); err != nil {
+	if t, err := database.GetDb().GetTaskById(id); err != nil {
 		data["code"] = 0
 	} else {
 		data["code"] = 1
@@ -146,7 +151,7 @@ func (s *IndexController) GetOneTunnel() {
 func (s *IndexController) Edit() {
 	id := s.GetIntNoErr("id")
 	if s.Ctx.Request.Method == "GET" {
-		if t, err := file.GetDb().GetTask(id); err != nil {
+		if t, err := database.GetDb().GetTaskById(id); err != nil {
 			s.error()
 		} else {
 			s.Data["t"] = t
@@ -154,37 +159,38 @@ func (s *IndexController) Edit() {
 		s.SetInfo("edit tunnel")
 		s.display()
 	} else {
-		if t, err := file.GetDb().GetTask(id); err != nil {
+		if t, err := database.GetDb().GetTaskById(id); err != nil {
 			s.error()
 		} else {
-			if client, err := file.GetDb().GetClient(s.GetIntNoErr("client_id")); err != nil {
+			if client, err := database.GetDb().GetClientById(s.GetIntNoErr("client_id")); err != nil {
 				s.AjaxErr("modified error,the client is not exist")
 				return
 			} else {
 				t.Client = client
 			}
-			if s.GetIntNoErr("port") != t.Port {
-				t.Port = s.GetIntNoErr("port")
+			if int(s.GetIntNoErr("port")) != t.ServerPort {
+				t.ServerPort = int(s.GetIntNoErr("port"))
 
-				if t.Port <= 0 {
-					t.Port = tool.GenerateServerPort(t.Mode)
+				if t.ServerPort <= 0 {
+					t.ServerPort = tool.GenerateServerPort(t.Mode)
 				}
 
-				if !tool.TestServerPort(s.GetIntNoErr("port"), t.Mode) {
+				if !tool.TestServerPort(int(s.GetIntNoErr("port")), t.Mode) {
 					s.AjaxErr("The port cannot be opened because it may has been occupied or is no longer allowed.")
 					return
 				}
 			}
 			t.ServerIp = s.getEscapeString("server_ip")
 			t.Mode = s.getEscapeString("type")
-			t.Target = &file.Target{TargetStr: s.getEscapeString("target")}
+			t.Target = &models.Target{TargetStr: s.getEscapeString("target")}
+			//前端需要加密成sha256，然后传输
 			t.Password = s.getEscapeString("password")
 			t.Id = id
 			t.LocalPath = s.getEscapeString("local_path")
 			t.StripPre = s.getEscapeString("strip_pre")
 			t.Remark = s.getEscapeString("remark")
 			t.Target.LocalProxy = s.GetBoolNoErr("local_proxy")
-			file.GetDb().UpdateTask(t)
+			database.GetDb().UpdateTask(t)
 			server.StopServer(t.Id)
 			server.StartTask(t.Id)
 		}

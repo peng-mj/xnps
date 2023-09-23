@@ -125,7 +125,7 @@ POST /index/edithost/
 | host | 域名 |
 | scheme | 协议类型(三种 all http https) |
 | location | url路由 空则为不限制 |
-| client\_id | 客户端id |
+| client\_id | 客户端id |-
 | target | 内网目标(ip:端口) |
 | header | request header 请求头 |
 | hostchange | request host 请求主机 |
