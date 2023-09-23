@@ -7,68 +7,45 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/mitchellh/mapstructure"
 	"io"
-	"log"
 	"net/http"
 	"strings"
 	"time"
+	"xnps/WebServer/WebApi"
 	"xnps/WebServer/WebObj"
 	"xnps/lib/crypt"
 	"xnps/lib/database"
 )
 
-// func (w *WebServer) keyAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
-//
-//		return func(c echo.Context) error {
-//
-//			// 获取请求中的密钥
-//			//key := c.Request().Header.Get("token")
-//			//user := c.Request().Header.Get("username")
-//			//Utils.Log("user:", user)
-//			//Utils.Log("token:", key)
-//			//Utils.Log("URL:", c.Request().URL)
-//			//Utils.Log("header中的token:" + key)
-//			//token, err := Database.KvWebGetToken(user)
-//
-//			// 验证密钥是否正确
-//			//if err != nil || key != token {
-//			//Utils.Log("token 验证失败")
-//			//re := WebObj.ReData{Data: ReCode.ErTokenLapsed, Status: "ERROR"}
-//			//request, _ := json.Marshal(re)
-//			//return c.HTML(http.StatusAccepted, string(request))
-//			//}
-//			//Utils.Log("密钥验证通过")
-//			// 密钥验证通过，继续传递请求给下一个处理程序
-//			return next(c)
-//		}
-//	}
 func (w *WebServer) jwtMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		tokenString := c.Request().Header.Get("Authorization")
-
 		// 检查Token是否存在
 		if tokenString == "" {
 			return c.JSON(http.StatusUnauthorized, map[string]string{
 				"message": "Missing JWT Token",
 			})
 		}
-
-		// 解析Token
+		// 获取Token
 		tokenString = strings.Replace(tokenString, "Bearer ", "", 1)
-		log.Println("token =" + tokenString)
 		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 			// 验证算法和密钥
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, echo.ErrUnauthorized
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); ok {
+				if claims, ok := token.Claims.(jwt.MapClaims); ok {
+					if username, ok := claims["username"].(string); ok {
+						se, err := w.secret.Get(username)
+						if err != nil {
+							return nil, err
+						} else {
+							return []byte(se), nil
+						}
+					}
+				}
 			}
-			return []byte("your_secret_key"), nil
+			return nil, echo.ErrUnauthorized
 		})
-
 		if err != nil {
-			return c.JSON(http.StatusUnauthorized, map[string]string{
-				"message": "Invalid JWT Token",
-			})
+			return c.String(http.StatusUnauthorized, WebApi.ReDara(err, nil))
 		}
-
 		// Token验证通过，将Token信息存储在Context中，以便后续处理函数使用
 		if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 			c.Set("user", claims)
@@ -79,29 +56,10 @@ func (w *WebServer) jwtMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	}
 }
 
+// 目前没有什么作用
 func (w *WebServer) keyAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 
 	return func(c echo.Context) error {
-		//jwtMap := jwt.New()
-		//jwtMap
-
-		// 获取请求中的密钥
-		//key := c.Request().Header.Get("token")
-		//user := c.Request().Header.Get("username")
-		//Utils.Log("user:", user)
-		//Utils.Log("token:", key)
-		//Utils.Log("URL:", c.Request().URL)
-		//Utils.Log("header中的token:" + key)
-		//token, err := Database.KvWebGetToken(user)
-
-		// 验证密钥是否正确
-		//if err != nil || key != token {
-		//Utils.Log("token 验证失败")
-		//re := WebObj.ReData{Data: ReCode.ErTokenLapsed, Status: "ERROR"}
-		//request, _ := json.Marshal(re)
-		//return c.HTML(http.StatusAccepted, string(request))
-		//}
-		//Utils.Log("密钥验证通过")
 		// 密钥验证通过，继续传递请求给下一个处理程序
 		return next(c)
 	}
@@ -109,7 +67,7 @@ func (w *WebServer) keyAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 
 func (w *WebServer) generateToken(username string) string {
 	claims := w.JWTToken.Claims.(jwt.MapClaims)
-	claims["username"] = username
+	claims["username"] = username + crypt.GenerateRandomVKey()
 	claims["exp"] = time.Now().Add(time.Hour * 1).Unix() // 设置Token的有效期
 	tokenString, _ := w.JWTToken.SignedString([]byte("your_secret_key"))
 	return tokenString
@@ -122,7 +80,10 @@ func (w *WebServer) Login(c echo.Context) (err error) {
 	login := new(WebObj.Login)
 	var token string
 	if err == nil {
-		json.Unmarshal(body, &re)
+		err = json.Unmarshal(body, &login)
+		if err != nil {
+			return err
+		}
 		if data, ok := re.Data.(map[string]interface{}); ok {
 			err = mapstructure.Decode(data, login)
 			Salt, err := w.salt.Get(login.Username)
@@ -137,7 +98,6 @@ func (w *WebServer) Login(c echo.Context) (err error) {
 						token = w.generateToken(login.Username)
 					}
 				}
-
 			}
 
 		}

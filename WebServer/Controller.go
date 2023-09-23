@@ -2,7 +2,6 @@ package WebServer
 
 import (
 	"github.com/golang-jwt/jwt"
-	"github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"xnps/WebServer/WebApi"
 )
@@ -16,10 +15,10 @@ type jwtCustomClaims struct {
 func (w *WebServer) InitSystem(pre string) {
 	r := w.e.Group(pre)
 	r = w.e.Group("/api")
-	conf := echojwt.Config{SigningKey: []byte("secret")}
+	//conf := echojwt.Config{SigningKey: []byte("secret")}
 
-	r.Use(w.keyAuthMiddleware)
-	r.Use(w.jwtMiddleware, echojwt.WithConfig(conf))
+	//r.Use(w.keyAuthMiddleware)
+	//r.Use(w.jwtMiddleware, echojwt.WithConfig(conf))
 	r.Use(middleware.Logger())
 	r.Use(middleware.Recover())
 	r.POST("/system/addConfig", WebApi.AddSysConfig)
@@ -33,10 +32,10 @@ func (w *WebServer) InitSystem(pre string) {
 func (w *WebServer) ApiRouterRules(pre string) {
 	r := w.e.Group(pre)
 	r = w.e.Group("/api")
-	conf := echojwt.Config{SigningKey: []byte("secret")}
+	//conf := echojwt.Config{SigningKey: []byte("secret")}
 
 	//r.Use(w.keyAuthMiddleware)
-	r.Use(w.jwtMiddleware, echojwt.WithConfig(conf))
+	r.Use(w.jwtMiddleware)
 	r.Use(middleware.Logger())
 	r.Use(middleware.Recover())
 
