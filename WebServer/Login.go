@@ -32,26 +32,21 @@ func (w *WebServer) jwtMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); ok {
 				if claims, ok := token.Claims.(jwt.MapClaims); ok {
 					if uuid, ok := claims["uuid"].(string); ok {
-						if pa, ok := w.secret.GetString(uuid); ok {
-							return []byte(pa), nil
-						} else {
-							return nil, echo.ErrUnauthorized
+						if secret, ok := w.secret.GetString(uuid); ok {
+							return []byte(secret), nil
 						}
 					}
 				}
 			}
 			return nil, echo.ErrUnauthorized
 		})
-		if err != nil {
-			return c.String(http.StatusUnauthorized, WebApi.ReDara(err, nil))
-		}
 		// Token验证通过，将Token信息存储在Context中，以便后续处理函数使用，这个用作目录管理
-		if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid && err == nil {
+			//TODO：这个地方可有可无->Set
 			c.Set("user", claims)
 			return next(c)
 		}
-
-		return echo.ErrUnauthorized
+		return c.String(http.StatusUnauthorized, WebApi.ReDara(err, nil))
 	}
 }
 
@@ -90,7 +85,7 @@ func (w *WebServer) Login(c echo.Context) (err error) {
 			}
 		}
 	}
-	return c.HTML(http.StatusOK, WebApi.ReDara(err, token))
+	return c.String(http.StatusOK, WebApi.ReDara(err, token))
 }
 
 // DoLogin 用于登录前准备，当用户登录时，将Salt和密码的sha256进行组合后再sha256编码，再传回服务器，避免中间者拦截密码的sha256
