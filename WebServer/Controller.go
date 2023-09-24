@@ -32,12 +32,9 @@ func (w *WebServer) InitSystem(pre string) {
 func (w *WebServer) ApiRouterRules(pre string) {
 	r := w.e.Group(pre)
 	r = w.e.Group("/api")
-	//conf := echojwt.Config{SigningKey: []byte("secret")}
-
-	//r.Use(w.keyAuthMiddleware)
 	r.Use(w.jwtMiddleware)
-	r.Use(middleware.Logger())
-	r.Use(middleware.Recover())
+	//r.Use(middleware.Logger())
+	//r.Use(middleware.Recover())
 
 	r.POST("/roastInfo/devId", WebApi.GetAllGroup)
 	r.POST("/get/tempData/devId", WebApi.GetAllClient)

@@ -59,6 +59,14 @@ func (c *Cache) Get(key Key) (value interface{}, ok bool) {
 	}
 	return
 }
+func (c *Cache) GetString(key Key) (value string, ok bool) {
+	v, ok := c.Get(key)
+	//slog.Info("get key", v)
+	if ok {
+		value, ok = v.(string)
+	}
+	return
+}
 
 // Remove removes the provided key from the cache.
 func (c *Cache) Remove(key Key) {
