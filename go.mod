@@ -21,9 +21,10 @@ require (
 )
 
 require (
+	github.com/go-ini/ini v1.67.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
-	github.com/labstack/echo-jwt/v4 v4.2.0
 	github.com/mitchellh/mapstructure v1.5.0
+	golang.org/x/exp v0.0.0-20230905200255-921286631fa9
 )
 
 require (
@@ -31,7 +32,6 @@ require (
 	github.com/bradfitz/iter v0.0.0-20191230175014-e8f45d346db8 // indirect
 	github.com/dsnet/compress v0.0.1 // indirect
 	github.com/go-ole/go-ole v1.2.4 // indirect
-	github.com/golang-jwt/jwt/v5 v5.0.0 // indirect
 	github.com/hooklift/assert v0.0.0-20170704181755-9d1defd6d214 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect

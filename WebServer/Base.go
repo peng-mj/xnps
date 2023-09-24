@@ -6,14 +6,14 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	"sync"
 	"xnps/WebServer/WebApi"
-	"xnps/WebServer/WebObj"
+	"xnps/lib/cache"
 )
 
 type WebServer struct {
 	e        *echo.Echo
-	salt     *WebObj.KVManage
+	salt     *cache.Cache
 	JWTToken *jwt.Token
-	secret   *WebObj.KVManage
+	secret   *cache.Cache
 	//tokenMan TokenManager
 }
 
@@ -44,8 +44,8 @@ func (w *WebServer) Start(url string) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	defer wg.Done()
-	w.salt = WebObj.NewKVMap(20)
-	w.secret = WebObj.NewKVMap(20) //默认最大密钥存储的文件数量
+	w.salt = cache.New(20)
+	w.secret = cache.New(20) //默认最大密钥存储的文件数量
 	w.JWTToken = jwt.New(jwt.SigningMethodHS256)
 	w.e = echo.New()
 	//w.e.HTTPErrorHandler = w.ErrorHandler

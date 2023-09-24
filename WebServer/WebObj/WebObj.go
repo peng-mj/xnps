@@ -35,8 +35,8 @@ type LoginData struct {
 }
 
 type DoLogin struct {
-	Username string `json:"Username"`
-	//Timestamp int64  `json:"Timestamp"`
+	Username  string `json:"Username"`
+	Timestamp int64  `json:"Timestamp"`
 }
 type Login struct {
 	Username string `json:"Username,omitempty"`
