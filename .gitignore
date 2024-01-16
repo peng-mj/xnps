@@ -7,4 +7,5 @@ TEMP
 *.exe
 *.txt
 *.json
+.idea
 

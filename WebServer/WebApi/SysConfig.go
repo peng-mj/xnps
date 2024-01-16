@@ -6,15 +6,15 @@ import (
 	"io"
 	"net/http"
 	"xnps/WebServer/WebObj"
-	"xnps/lib/database"
-	"xnps/lib/database/models"
+	"xnps/database/Mapper"
+	"xnps/database/models"
 )
 
 /**********        USER          *********/
 
 func GetSysConfig(c echo.Context) (err error) {
 	var conf models.SystemConfig
-	conf, err = database.GetDb().GetSystemConfig()
+	conf, err = Mapper.GetDb().GetSystemConfig()
 	if err != nil {
 		return err
 	}
@@ -36,7 +36,7 @@ func EditSYsConfig(c echo.Context) (err error) {
 	if err == nil {
 		err = json.Unmarshal(body, &conf)
 		if err == nil {
-			database.GetDb().EditSysConfig(conf)
+			Mapper.GetDb().UpdateSysConfig(conf)
 		}
 	}
 	if err != nil {
@@ -59,7 +59,7 @@ func AddSysConfig(c echo.Context) (err error) {
 		err = json.Unmarshal(body, &conf)
 		if err == nil {
 			//TODO:这里判断username的合法性
-			conf, err = database.GetDb().AddSysConfig(conf)
+			conf, err = Mapper.GetDb().AddSysConfig(conf)
 		}
 	}
 

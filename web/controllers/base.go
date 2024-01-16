@@ -9,7 +9,6 @@ import (
 	"time"
 	"xnps/lib/common"
 	"xnps/lib/crypt"
-	"xnps/lib/database"
 	"xnps/server"
 )
 
@@ -36,7 +35,7 @@ func (s *BaseController) Prepare() {
 		configKey = crypt.GenerateRandomVKey()
 	}
 	timeNowUnix := time.Now().Unix()
-	if !(md5Key != "" && (math.Abs(float64(timeNowUnix-int64(timestamp))) <= 20) && (crypt.Sha256(configKey+strconv.FormatInt(timestamp, 10)) == md5Key)) {
+	if !(md5Key != "" && (math.Abs(float64(timeNowUnix-int64(timestamp))) <= 20) && (crypt.Sha1(configKey+strconv.FormatInt(timestamp, 10)) == md5Key)) {
 		if s.GetSession("auth") != true {
 			s.Redirect(beego.AppConfig.String("web_base_url")+"/login/index", 302)
 		}
@@ -49,7 +48,7 @@ func (s *BaseController) Prepare() {
 		s.Ctx.Input.SetParam("client_id", strconv.Itoa(s.GetSession("clientId").(int)))
 		s.Data["isAdmin"] = false
 		s.Data["username"] = s.GetSession("username")
-		s.CheckUserAuth()
+		//s.CheckUserAuth()
 	} else {
 		s.Data["isAdmin"] = true
 	}
@@ -216,7 +215,7 @@ func (s *BaseController) CheckUserAuth() {
 				//	}
 				//}
 			} else {
-				belong = database.GetDb().CheckTunnelClient(s.GetSession("clientId").(int64), id)
+				//belong = Mapper.GetDb().CheckTunnelClient(s.GetSession("clientId").(int64), id)
 				//这个是通过通道获取clientId然后和接收到的参数对比，看是否通道对应的ID是否是收到的客户端ID
 
 				//if v, ok := database.GetDb().JsonDb.Tasks.Load(id); ok {

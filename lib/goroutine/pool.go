@@ -7,8 +7,8 @@ import (
 	"net"
 	"strings"
 	"sync"
+	"xnps/database/models"
 	"xnps/lib/common"
-	"xnps/lib/database/models"
 )
 
 type connGroup struct {

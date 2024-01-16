@@ -9,7 +9,7 @@ type Rate struct {
 	bucketSize        int64
 	bucketSurplusSize int64
 	bucketAddSize     int64
-	stopChan          chan bool
+	stopChan          chan struct{}
 	NowRate           int64
 }
 
@@ -18,7 +18,7 @@ func NewRate(addSize int64) *Rate {
 		bucketSize:        addSize * 2,
 		bucketSurplusSize: 0,
 		bucketAddSize:     addSize,
-		stopChan:          make(chan bool),
+		stopChan:          make(chan struct{}),
 	}
 }
 
@@ -34,14 +34,14 @@ func (s *Rate) add(size int64) {
 	atomic.AddInt64(&s.bucketSurplusSize, size)
 }
 
-//回桶
+// 回桶
 func (s *Rate) ReturnBucket(size int64) {
 	s.add(size)
 }
 
-//停止
+// 停止
 func (s *Rate) Stop() {
-	s.stopChan <- true
+	s.stopChan <- struct{}{}
 }
 
 func (s *Rate) Get(size int64) {

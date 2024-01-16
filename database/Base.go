@@ -1,24 +1,24 @@
 package database
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/astaxie/beego/logs"
-	"gorm.io/driver/sqlite"
+	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
+	"xnps/database/Mapper"
+	"xnps/database/models"
 	"xnps/lib/common"
-	"xnps/lib/database/models"
 )
 
-var Db *DbUtils
+var Db *Mapper.DbUtils
 
-func NewDatabase(dbFile string) *DbUtils {
-	var db = DbUtils{}
+func NewDatabase(dbFile string) *Mapper.DbUtils {
+	var db = Mapper.DbUtils{}
 	var err error
 	db.GDb, err = gorm.Open(sqlite.Open(dbFile), &gorm.Config{})
 	if err != nil {
@@ -26,7 +26,7 @@ func NewDatabase(dbFile string) *DbUtils {
 		os.Exit(-1)
 	} else {
 		err := db.GDb.AutoMigrate(
-			models.Client{}, models.Tunnel{}, models.Flow{}, models.SystemConfig{}, models.Firewall{}, models.BlockListInfo{})
+			models.Client{}, models.Tunnel{}, models.SystemConfig{}, models.Firewall{}, models.BlockListInfo{})
 		if err != nil {
 			logs.Info("创建数据表失败", err)
 		}
@@ -110,21 +110,21 @@ type JsonDb struct {
 //	hostLock.Unlock()
 //}
 
-var taskLock sync.Mutex
+//var taskLock sync.Mutex
 
-func (s *JsonDb) StoreTasksToJsonFile() {
-	taskLock.Lock()
-	storeSyncMapToFile(s.Tasks, s.TaskFilePath)
-	taskLock.Unlock()
-}
+//func (s *JsonDb) StoreTasksToJsonFile() {
+//	taskLock.Lock()
+//	storeSyncMapToFile(s.Tasks, s.TaskFilePath)
+//	taskLock.Unlock()
+//}
 
-var clientLock sync.Mutex
+//var clientLock sync.Mutex
 
-func (s *JsonDb) StoreClientsToJsonFile() {
-	clientLock.Lock()
-	storeSyncMapToFile(s.Clients, s.ClientFilePath)
-	clientLock.Unlock()
-}
+//func (s *JsonDb) StoreClientsToJsonFile() {
+////	clientLock.Lock()
+////	storeSyncMapToFile(s.Clients, s.ClientFilePath)
+////	clientLock.Unlock()
+////}
 
 func (s *JsonDb) GetClientId() int32 {
 	return atomic.AddInt32(&s.ClientIncreaseId, 1)
@@ -144,56 +144,57 @@ func loadSyncMapFromFile(filePath string, f func(value string)) {
 	}
 }
 
-func storeSyncMapToFile(m sync.Map, filePath string) {
-	file, err := os.Create(filePath + ".tmp")
-	// first create a temporary file to store
-	if err != nil {
-		panic(err)
-	}
-	m.Range(func(key, value interface{}) bool {
-		var b []byte
-		var err error
-		switch value.(type) {
-		case *models.Tunnel:
-			obj := value.(*models.Tunnel)
-			if obj.NoStore {
-				return true
-			}
-			b, err = json.Marshal(obj)
-		//case *models.Host:
-		//	obj := value.(*models.Host)
-		//	if obj.NoStore {
-		//		return true
-		//	}
-		//	b, err = json.Marshal(obj)
-		case *models.Client:
-			obj := value.(*models.Client)
-			if obj.Valid {
-				return true
-			}
-			b, err = json.Marshal(obj)
-		default:
-			return true
-		}
-		if err != nil {
-			return true
-		}
-		_, err = file.Write(b)
-		if err != nil {
-			panic(err)
-		}
-		_, err = file.Write([]byte("\n" + common.CONN_DATA_SEQ))
-		if err != nil {
-			panic(err)
-		}
-		return true
-	})
-	_ = file.Sync()
-	_ = file.Close()
-	// must close file first, then rename it
-	err = os.Rename(filePath+".tmp", filePath)
-	if err != nil {
-		logs.Error(err, "store to file err, data will lost")
-	}
-	// replace the file, maybe provides atomic operation
-}
+//
+//func storeSyncMapToFile(m sync.Map, filePath string) {
+//	file, err := os.Create(filePath + ".tmp")
+//	// first create a temporary file to store
+//	if err != nil {
+//		panic(err)
+//	}
+//	m.Range(func(key, value interface{}) bool {
+//		var b []byte
+//		var err error
+//		switch value.(type) {
+//		case *models.Tunnel:
+//			obj := value.(*models.Tunnel)
+//			if obj.NoStore {
+//				return true
+//			}
+//			b, err = json.Marshal(obj)
+//		//case *models.Host:
+//		//	obj := value.(*models.Host)
+//		//	if obj.NoStore {
+//		//		return true
+//		//	}
+//		//	b, err = json.Marshal(obj)
+//		case *models.Client:
+//			obj := value.(*models.Client)
+//			if obj.Valid {
+//				return true
+//			}
+//			b, err = json.Marshal(obj)
+//		default:
+//			return true
+//		}
+//		if err != nil {
+//			return true
+//		}
+//		_, err = file.Write(b)
+//		if err != nil {
+//			panic(err)
+//		}
+//		_, err = file.Write([]byte("\n" + common.CONN_DATA_SEQ))
+//		if err != nil {
+//			panic(err)
+//		}
+//		return true
+//	})
+//	_ = file.Sync()
+//	_ = file.Close()
+//	// must close file first, then rename it
+//	err = os.Rename(filePath+".tmp", filePath)
+//	if err != nil {
+//		logs.Error(err, "store to file err, data will lost")
+//	}
+//	// replace the file, maybe provides atomic operation
+//}

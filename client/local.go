@@ -7,7 +7,7 @@ import (
 	"runtime"
 	"sync"
 	"time"
-	"xnps/lib/database/models"
+	"xnps/database/models"
 	"xnps/lib/nps_mux"
 
 	"github.com/astaxie/beego/logs"
@@ -16,7 +16,6 @@ import (
 	"xnps/lib/config"
 	"xnps/lib/conn"
 	"xnps/lib/crypt"
-	"xnps/server/proxy"
 )
 
 var (
@@ -62,58 +61,58 @@ func CloseLocalServer() {
 	}
 }
 
-func startLocalFileServer(config *config.CommonConfig, t *models.Tunnel, vkey string) {
-	remoteConn, err := NewConn(config.Tp, vkey, config.Server, common.WORK_FILE, config.ProxyUrl)
-	if err != nil {
-		logs.Error("Local connection server failed ", err.Error())
-		return
-	}
-	srv := &http.Server{
-		Handler: http.StripPrefix(t.StripPre, http.FileServer(http.Dir(t.LocalPath))),
-	}
-	logs.Info("start local file system, local path %s, strip prefix %s ,remote port %s ", t.LocalPath, t.StripPre, t.Ports)
-	fileServer = append(fileServer, srv)
-	listener := nps_mux.NewMux(remoteConn.Conn, common.CONN_TCP, config.DisconnectTime)
-	logs.Error(srv.Serve(listener))
-}
+//func startLocalFileServer(config *config.CommonConfig, t *models.Tunnel, vkey string) {
+//	remoteConn, err := NewConn(config.Tp, vkey, config.Server, common.WORK_FILE, config.ProxyUrl)
+//	if err != nil {
+//		logs.Error("Local connection server failed ", err.Error())
+//		return
+//	}
+//	srv := &http.Server{
+//		Handler: http.StripPrefix(t.StripPre, http.FileServer(http.Dir(t.LocalPath))),
+//	}
+//	logs.Info("start local file system, local path %s, strip prefix %s ,remote port %s ", t.LocalPath, t.StripPre, t.Ports)
+//	fileServer = append(fileServer, srv)
+//	listener := nps_mux.NewMux(remoteConn.Conn, common.CONN_TCP, config.DisconnectTime)
+//	logs.Error(srv.Serve(listener))
+//}
 
 func StartLocalServer(l *config.LocalServer, config *config.CommonConfig) error {
 	if l.Type != "secret" {
 		go handleUdpMonitor(config, l)
 	}
-	task := &models.Tunnel{
-		ServerPort: l.Port,
-		ServerIp:   "0.0.0.0",
-		Status:     true,
-		//FIXME:不一定是这个，需要注意
-		Client: new(models.Client),
-		Flow:   &models.Flow{},
-		Target: &models.Target{},
-	}
-	switch l.Type {
-	case "p2ps":
-		logs.Info("successful start-up of local socks5 monitoring, port", l.Port)
-		return proxy.NewSock5ModeServer(p2pNetBridge, task).Start()
-	case "p2pt":
-		logs.Info("successful start-up of local tcp trans monitoring, port", l.Port)
-		return proxy.NewTunnelModeServer(proxy.HandleTrans, p2pNetBridge, task).Start()
-	case "p2p", "secret":
-		listener, err := net.ListenTCP("tcp", &net.TCPAddr{net.ParseIP("0.0.0.0"), l.Port, ""})
-		if err != nil {
-			logs.Error("local listener startup failed port %d, error %s", l.Port, err.Error())
-			return err
-		}
-		LocalServer = append(LocalServer, listener)
-		logs.Info("successful start-up of local tcp monitoring, port", l.Port)
-		conn.Accept(listener, func(c net.Conn) {
-			logs.Trace("new %s connection", l.Type)
-			if l.Type == "secret" {
-				handleSecret(c, config, l)
-			} else if l.Type == "p2p" {
-				handleP2PVisitor(c, config, l)
-			}
-		})
-	}
+	//task := &models.Tunnel{
+	//	ServerPort: l.Port,
+	//	ServerIp:   "0.0.0.0",
+	//	Status:     true,
+	//	//FIXME:不一定是这个，需要注意
+	//	Client: new(models.Client),
+	//	Flow:   &models.Flow{},
+	//	Target: &models.Target{},
+	//}
+	//switch l.Type {
+	//case "p2ps":
+	//	logs.Info("successful start-up of local socks5 monitoring, port", l.Port)
+	//	return proxy.NewSock5ModeServer(p2pNetBridge, task).Start()
+	//case "p2pt":
+	//	logs.Info("successful start-up of local tcp trans monitoring, port", l.Port)
+	//	return proxy.NewTunnelModeServer(proxy.HandleTrans, p2pNetBridge, task).Start()
+	//case "p2p", "secret":
+	//	listener, err := net.ListenTCP("tcp", &net.TCPAddr{net.ParseIP("0.0.0.0"), l.Port, ""})
+	//	if err != nil {
+	//		logs.Error("local listener startup failed port %d, error %s", l.Port, err.Error())
+	//		return err
+	//	}
+	//	LocalServer = append(LocalServer, listener)
+	//	logs.Info("successful start-up of local tcp monitoring, port", l.Port)
+	//	conn.Accept(listener, func(c net.Conn) {
+	//		logs.Trace("new %s connection", l.Type)
+	//		if l.Type == "secret" {
+	//			handleSecret(c, config, l)
+	//		} else if l.Type == "p2p" {
+	//			handleP2PVisitor(c, config, l)
+	//		}
+	//	})
+	//}
 	return nil
 }
 
@@ -143,36 +142,36 @@ func handleUdpMonitor(config *config.CommonConfig, l *config.LocalServer) {
 	}
 }
 
-func handleSecret(localTcpConn net.Conn, config *config.CommonConfig, l *config.LocalServer) {
-	remoteConn, err := NewConn(config.Tp, config.VKey, config.Server, common.WORK_SECRET, config.ProxyUrl)
-	if err != nil {
-		logs.Error("Local connection server failed ", err.Error())
-		return
-	}
-	if _, err := remoteConn.Write([]byte(crypt.Sha256(l.Password))); err != nil {
-		logs.Error("Local connection server failed ", err.Error())
-		return
-	}
-	conn.CopyWaitGroup(remoteConn.Conn, localTcpConn, false, false, nil, nil, false, nil, nil)
-}
+//func handleSecret(localTcpConn net.Conn, config *config.CommonConfig, l *config.LocalServer) {
+//	remoteConn, err := NewConn(config.Tp, config.VKey, config.Server, common.WORK_SECRET, config.ProxyUrl)
+//	if err != nil {
+//		logs.Error("Local connection server failed ", err.Error())
+//		return
+//	}
+//	if _, err := remoteConn.Write([]byte(crypt.Sha1(l.Password))); err != nil {
+//		logs.Error("Local connection server failed ", err.Error())
+//		return
+//	}
+//	conn.CopyWaitGroup(remoteConn.Conn, localTcpConn, false, false, nil, nil, false, nil, nil)
+//}
 
-func handleP2PVisitor(localTcpConn net.Conn, config *config.CommonConfig, l *config.LocalServer) {
-	if udpConn == nil {
-		logs.Notice("new conn, P2P can not penetrate successfully, traffic will be transferred through the server")
-		handleSecret(localTcpConn, config, l)
-		return
-	}
-	logs.Trace("start trying to connect with the server")
-	//FIXME just support compress now because there is not tls file in client packages
-	link := conn.NewLink(common.CONN_TCP, l.Target, false, config.Client.Compress, localTcpConn.LocalAddr().String(), false)
-	if target, err := p2pNetBridge.SendLinkInfo(0, link, nil); err != nil {
-		logs.Error(err)
-		udpConnStatus = false
-		return
-	} else {
-		conn.CopyWaitGroup(target, localTcpConn, false, config.Client.Compress, nil, nil, false, nil, nil)
-	}
-}
+//func handleP2PVisitor(localTcpConn net.Conn, config *config.CommonConfig, l *config.LocalServer) {
+//	if udpConn == nil {
+//		logs.Notice("new conn, P2P can not penetrate successfully, traffic will be transferred through the server")
+//		handleSecret(localTcpConn, config, l)
+//		return
+//	}
+//	logs.Trace("start trying to connect with the server")
+//	//FIXME just support compress now because there is not tls file in client packages
+//	link := conn.NewLink(common.CONN_TCP, l.Target, false, config.Client.Compress, localTcpConn.LocalAddr().String(), false)
+//	if target, err := p2pNetBridge.SendLinkInfo(0, link, nil); err != nil {
+//		logs.Error(err)
+//		udpConnStatus = false
+//		return
+//	} else {
+//		conn.CopyWaitGroup(target, localTcpConn, false, config.Client.Compress, nil, nil, false, nil, nil)
+//	}
+//}
 
 func newUdpConn(localAddr string, config *config.CommonConfig, l *config.LocalServer) {
 	lock.Lock()
@@ -182,7 +181,7 @@ func newUdpConn(localAddr string, config *config.CommonConfig, l *config.LocalSe
 		logs.Error("Local connection server failed ", err.Error())
 		return
 	}
-	if _, err := remoteConn.Write([]byte(crypt.Sha256(l.Password))); err != nil {
+	if _, err := remoteConn.Write([]byte(crypt.Sha1(l.Password))); err != nil {
 		logs.Error("Local connection server failed ", err.Error())
 		return
 	}
@@ -194,7 +193,7 @@ func newUdpConn(localAddr string, config *config.CommonConfig, l *config.LocalSe
 	}
 	var localConn net.PacketConn
 	var remoteAddress string
-	if remoteAddress, localConn, err = handleP2PUdp(localAddr, string(rAddr), crypt.Sha256(l.Password), common.WORK_P2P_VISITOR); err != nil {
+	if remoteAddress, localConn, err = handleP2PUdp(localAddr, string(rAddr), crypt.Sha1(l.Password), common.WORK_P2P_VISITOR); err != nil {
 		logs.Error(err)
 		return
 	}

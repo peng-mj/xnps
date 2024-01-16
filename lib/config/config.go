@@ -5,10 +5,9 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
-	"xnps/lib/database/models"
-
+	"xnps/database/Mapper"
+	"xnps/database/models"
 	"xnps/lib/common"
-	"xnps/lib/database"
 )
 
 type CommonConfig struct {
@@ -107,7 +106,7 @@ func getTitleContent(s string) string {
 
 func dealCommon(s string) *CommonConfig {
 	c := &CommonConfig{}
-	c.Client = database.NewClient("", true, true)
+	c.Client = Mapper.NewClient("")
 	//c.Client.Cnf = new(models.Config)
 	for _, v := range splitStr(s) {
 		item := strings.Split(v, "=")
@@ -125,14 +124,6 @@ func dealCommon(s string) *CommonConfig {
 			c.Tp = item[1]
 		case "auto_reconnection":
 			c.AutoReconnection = common.GetBoolByStr(item[1])
-		case "basic_username":
-			c.Client.HttpUser = item[1]
-		case "basic_password":
-			c.Client.HttpPasswd = item[1]
-		case "web_password":
-			c.Client.HttpPasswd = item[1]
-		case "web_username":
-			c.Client.HttpUser = item[1]
 		case "compress":
 			c.Client.Compress = common.GetBoolByStr(item[1])
 		case "crypt":
@@ -141,8 +132,6 @@ func dealCommon(s string) *CommonConfig {
 			c.ProxyUrl = item[1]
 		case "rate_limit":
 			c.Client.RateLimit = common.GetIntNoErrByStr(item[1])
-		case "flow_limit":
-			c.Client.Flow.FlowLimit = int64(common.GetIntNoErrByStr(item[1]))
 		case "max_conn":
 			c.Client.MaxConn = common.GetIntNoErrByStr(item[1])
 		case "remark":

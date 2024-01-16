@@ -1,15 +1,14 @@
 package proxy
 
 import (
+	"github.com/astaxie/beego/logs"
 	"io"
 	"net"
 	"strings"
 	"sync"
 	"time"
-	"xnps/lib/database/models"
-
-	"github.com/astaxie/beego/logs"
 	"xnps/bridge"
+	"xnps/database/models"
 	"xnps/lib/common"
 	"xnps/lib/conn"
 )
@@ -49,7 +48,7 @@ func (s *UdpModeServer) Start() error {
 
 		// 判断访问地址是否在黑名单内
 		//黑名单管理需重构
-		if common.IsBlackIp(addr.String(), s.tunnel.Client.VerifyKey) {
+		if common.IsBlackIp(addr.String(), s.tunnel.Client.AccessKey) {
 			break
 		}
 

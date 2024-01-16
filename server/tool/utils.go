@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	ports        []int
+	ports        []uint16
 	ServerStatus []map[string]interface{}
 )
 
@@ -32,22 +32,22 @@ func InitAllowPort() {
 	ports = common.GetPorts(p)
 }
 
-func TestServerPort(p int, m string) (b bool) {
+func TestServerPort(port uint16, m string) (b bool) {
 	if m == "p2p" || m == "secret" {
 		return true
 	}
-	if p > 65535 || p < 0 {
+	if port > 65535 || port < 0 {
 		return false
 	}
 	if len(ports) != 0 {
-		if !common.InIntArr(ports, p) {
+		if !common.InIntArr(ports, port) {
 			return false
 		}
 	}
 	if m == "udp" {
-		b = common.TestUdpPort(p)
+		b = common.TestUdpPort(port)
 	} else {
-		b = common.TestTcpPort(p)
+		b = common.TestTcpPort(port)
 	}
 	return
 }
@@ -61,13 +61,11 @@ func StrToInt64(s string, def ...int64) int64 {
 }
 
 // TODO:设置端口范围 端口不能这样使用随机数生成，应该在某一范围内随机顺序生成
-func GenerateServerPort(m string) int {
+func GenerateServerPort(m string) uint16 {
 	for {
 		//生成随机数 1024 - 65535
-		serverPort := rand.Intn(65535)
-		if serverPort < 1024 {
-			serverPort = 1024
-		}
+		i := rand.Intn(len(ports))
+		serverPort := ports[i]
 
 		if TestServerPort(serverPort, m) {
 			return serverPort

@@ -97,7 +97,7 @@ func GetIntNoErrByStr(str string) int {
 
 // Get verify value
 func GetVerifyValue(vkey string) string {
-	return crypt.Sha256(vkey)
+	return crypt.Sha1(vkey)
 }
 
 // Change headers and host of request
@@ -145,8 +145,8 @@ func FileExists(name string) bool {
 }
 
 // Judge whether the TCP port can open normally
-func TestTcpPort(port int) bool {
-	l, err := net.ListenTCP("tcp", &net.TCPAddr{net.ParseIP("0.0.0.0"), port, ""})
+func TestTcpPort(port uint16) bool {
+	l, err := net.ListenTCP("tcp", &net.TCPAddr{net.ParseIP("0.0.0.0"), int(port), ""})
 	defer func() {
 		if l != nil {
 			l.Close()
@@ -159,8 +159,8 @@ func TestTcpPort(port int) bool {
 }
 
 // Judge whether the UDP port can open normally
-func TestUdpPort(port int) bool {
-	l, err := net.ListenUDP("udp", &net.UDPAddr{net.ParseIP("0.0.0.0"), port, ""})
+func TestUdpPort(port uint16) bool {
+	l, err := net.ListenUDP("udp", &net.UDPAddr{net.ParseIP("0.0.0.0"), int(port), ""})
 	defer func() {
 		if l != nil {
 			l.Close()
@@ -204,7 +204,7 @@ func InStrArr(arr []string, val string) bool {
 }
 
 // inArray int interface
-func InIntArr(arr []int, val int) bool {
+func InIntArr(arr []uint16, val uint16) bool {
 	for _, v := range arr {
 		if v == val {
 			return true
@@ -214,8 +214,9 @@ func InIntArr(arr []int, val int) bool {
 }
 
 // format ports str to a int array
-func GetPorts(p string) []int {
-	var ps []int
+func GetPorts(p string) []uint16 {
+	var ps []uint16
+	p = strings.Replace(p, " ", "", -1)
 	arr := strings.Split(p, ",")
 	for _, v := range arr {
 		fw := strings.Split(v, "-")
@@ -224,14 +225,15 @@ func GetPorts(p string) []int {
 				start, _ := strconv.Atoi(fw[0])
 				end, _ := strconv.Atoi(fw[1])
 				for i := start; i <= end; i++ {
-					ps = append(ps, i)
+					ps = append(ps, uint16(i))
 				}
 			} else {
 				continue
 			}
 		} else if IsPort(v) {
-			p, _ := strconv.Atoi(v)
-			ps = append(ps, p)
+			if p, err := strconv.Atoi(v); err != nil {
+				ps = append(ps, uint16(p))
+			}
 		}
 	}
 	return ps

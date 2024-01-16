@@ -5,6 +5,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/md5"
+	"crypto/sha1"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -64,10 +65,15 @@ func Sha256(s string) string {
 	sha.Write([]byte(s))
 	return hex.EncodeToString(sha.Sum(nil))
 }
+func Sha1(s string) string {
+	sha := sha1.New()
+	sha.Write([]byte(s))
+	return hex.EncodeToString(sha.Sum(nil))
+}
 
-func Md5(s string) string {
+func Md5(s []byte) string {
 	h := md5.New()
-	h.Write([]byte(s))
+	h.Write(s)
 	return hex.EncodeToString(h.Sum(nil))
 }
 

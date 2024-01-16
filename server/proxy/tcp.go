@@ -2,15 +2,14 @@ package proxy
 
 import (
 	"errors"
+	"github.com/astaxie/beego"
+	"github.com/astaxie/beego/logs"
 	"net"
 	"net/http"
 	"path/filepath"
 	"strconv"
-	"xnps/lib/database/models"
-
-	"github.com/astaxie/beego"
-	"github.com/astaxie/beego/logs"
 	"xnps/bridge"
+	"xnps/database/models"
 	"xnps/lib/common"
 	"xnps/lib/conn"
 	"xnps/server/connection"
@@ -33,7 +32,7 @@ func NewTunnelModeServer(process process, bridge NetBridge, task *models.Tunnel)
 
 // START
 func (s *TunnelModeServer) Start() error {
-	return conn.NewTcpListenerAndProcess(s.tunnel.ServerIp+":"+strconv.Itoa(s.tunnel.ServerPort), func(c net.Conn) {
+	return conn.NewTcpListenerAndProcess(s.tunnel.ServerIp+":"+strconv.Itoa(int(s.tunnel.ServerPort)), func(c net.Conn) {
 		if err := s.CheckFlowAndConnNum(s.tunnel.Client); err != nil {
 			logs.Warn("%s:%d client:%d tcp connect error:%s", c.RemoteAddr(), s.tunnel.ServerPort, s.tunnel.Client.Id, err.Error())
 			c.Close()
@@ -101,28 +100,8 @@ func ProcessTunnel(c *conn.Conn, s *TunnelModeServer) error {
 	targetAddr, err := s.tunnel.Target.GetRandomTarget()
 	if err != nil {
 		c.Close()
-		logs.Warn("tcp port %d ,client id %d,tunnel id %d connect error %s", s.tunnel.ServerPort, s.tunnel.Client.Id, s.tunnel.Id, err.Error())
+		logs.Warn("tcp port %d ,client id %d,tunnel id %d connect error %s", s.tunnel.ServerPort, s.tunnel.ClientId, s.tunnel.Id, err.Error())
 		return err
 	}
-	return s.DealClient(c, s.tunnel.Client, targetAddr, nil, common.CONN_TCP, nil, s.tunnel.Client.Flow, s.tunnel.Target.LocalProxy, s.tunnel)
-}
-
-// http proxy
-func ProcessHttp(c *conn.Conn, s *TunnelModeServer) error {
-
-	_, addr, rb, err, r := c.GetHost()
-	if err != nil {
-		c.Close()
-		logs.Info(err)
-		return err
-	}
-	if r.Method == "CONNECT" {
-		c.Write([]byte("HTTP/1.1 200 Connection established\r\n\r\n"))
-		rb = nil
-	}
-	if err := s.auth(r, c, s.tunnel.Client.HttpUser, s.tunnel.Client.HttpPasswd); err != nil {
-		return err
-	}
-	return s.DealClient(c, s.tunnel.Client, addr, rb, common.CONN_TCP, nil, s.tunnel.Client.Flow, s.tunnel.Target.LocalProxy, nil)
-
+	return s.DealClient(c, s.tunnel.Client, targetAddr, nil, common.CONN_TCP, nil, s.tunnel.Target.LocalProxy, s.tunnel)
 }

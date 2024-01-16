@@ -2,9 +2,9 @@ package controllers
 
 import (
 	"github.com/astaxie/beego"
+	"xnps/database/Mapper"
+	"xnps/database/models"
 	"xnps/lib/common"
-	"xnps/lib/database"
-	"xnps/lib/database/models"
 	"xnps/lib/rate"
 	"xnps/server"
 )
@@ -47,7 +47,7 @@ func (s *ClientController) Add() {
 	} else {
 		//id := database.GetDb().JsonDb.GetClientId()
 		t := &models.Client{
-			VerifyKey: s.getEscapeString("vkey"),
+			AccessKey: s.getEscapeString("vkey"),
 			//Id:        id,
 			Valid: true,
 			Name:  s.getEscapeString("remark"),
@@ -66,17 +66,15 @@ func (s *ClientController) Add() {
 			Compress:           common.GetBoolByStr(s.getEscapeString("compress")),
 			Crypt:              s.GetBoolNoErr("crypt"),
 
-			HttpUser:     s.getEscapeString("web_username"),
-			HttpPasswd:   s.getEscapeString("web_password"),
 			MaxTunnelNum: int(s.GetIntNoErr("max_tunnel")),
-			Flow: &models.Flow{
-				ExportFlow: 0,
-				InletFlow:  0,
-				FlowLimit:  int64(s.GetIntNoErr("flow_limit")),
-			},
+			//Flow: &models.Flow{
+			//	ExportFlow: 0,
+			//	InletFlow:  0,
+			//	FlowLimit:  int64(s.GetIntNoErr("flow_limit")),
+			//},
 			//BlackIpList: RemoveRepeatedElement(strings.Split(s.getEscapeString("blackiplist"), "\r\n")),
 		}
-		if err := database.GetDb().NewClient(t); err != nil {
+		if err := Mapper.GetDb().CreateNewClient(t); err != nil {
 			s.AjaxErr(err.Error())
 		}
 		s.AjaxOkWithId("add success", t.Id)
@@ -86,7 +84,7 @@ func (s *ClientController) GetClient() {
 	if s.Ctx.Request.Method == "POST" {
 		id := s.GetIntNoErr("id")
 		data := make(map[string]interface{})
-		if c, err := database.GetDb().GetClientById(id); err != nil {
+		if c, err := Mapper.GetDb().GetClientById(id); err != nil {
 			data["code"] = 0
 		} else {
 			data["code"] = 1
@@ -102,7 +100,7 @@ func (s *ClientController) Edit() {
 	id := s.GetIntNoErr("id")
 	if s.Ctx.Request.Method == "GET" {
 		s.Data["menu"] = "client"
-		if c, err := database.GetDb().GetClientById(id); err != nil {
+		if c, err := Mapper.GetDb().GetClientById(id); err != nil {
 			s.error()
 		} else {
 			s.Data["c"] = c
@@ -112,38 +110,31 @@ func (s *ClientController) Edit() {
 		s.SetInfo("edit client")
 		s.display()
 	} else {
-		if c, err := database.GetDb().GetClientById(id); err != nil {
+		if c, err := Mapper.GetDb().GetClientById(id); err != nil {
 			s.error()
 			s.AjaxErr("client ID not found")
 			return
 		} else {
 			if s.getEscapeString("web_username") != "" {
-				if s.getEscapeString("web_username") == beego.AppConfig.String("web_username") || !database.GetDb().VerifyUserName(s.getEscapeString("web_username"), c.Id) {
+				if s.getEscapeString("web_username") == beego.AppConfig.String("web_username") || !Mapper.GetDb().VerifyUserName(s.getEscapeString("web_username"), c.Id) {
 					s.AjaxErr("web login username duplicate, please reset")
 					return
 				}
 			}
 			if s.GetSession("isAdmin").(bool) {
-				if !database.GetDb().VerifyVkey(s.getEscapeString("vkey"), c.Id) {
+				if !Mapper.GetDb().VerifyClientVkey(s.getEscapeString("vkey"), c.Id) {
 					s.AjaxErr("Vkey duplicate, please reset")
 					return
 				}
-				c.VerifyKey = s.getEscapeString("vkey")
-				c.Flow.FlowLimit = int64(s.GetIntNoErr("flow_limit"))
+				c.AccessKey = s.getEscapeString("vkey")
 				c.RateLimit = int(s.GetIntNoErr("rate_limit"))
 				c.MaxConn = int(int32(s.GetIntNoErr("max_conn")))
 				c.MaxTunnelNum = int(s.GetIntNoErr("max_tunnel"))
 			}
 			c.Name = s.getEscapeString("remark")
-			c.HttpUser = s.getEscapeString("u")
-			c.HttpPasswd = s.getEscapeString("p")
 			c.Compress = common.GetBoolByStr(s.getEscapeString("compress"))
 			c.Crypt = s.GetBoolNoErr("crypt")
-			b, err := beego.AppConfig.Bool("allow_user_change_username")
-			if s.GetSession("isAdmin").(bool) || (err == nil && b) {
-				c.HttpUser = s.getEscapeString("web_username")
-			}
-			c.HttpPasswd = s.getEscapeString("web_password")
+
 			c.AllowUseConfigFile = s.GetBoolNoErr("config_conn_allow")
 			if c.Rate != nil {
 				c.Rate.Stop()
@@ -157,7 +148,7 @@ func (s *ClientController) Edit() {
 			}
 			//TODO:黑名单管理需要重构
 			//c.BlackIpList = RemoveRepeatedElement(strings.Split(s.getEscapeString("blackiplist"), "\r\n"))
-			database.GetDb().UpdateClientById(c, c.Id)
+			Mapper.GetDb().UpdateClientById(c, c.Id)
 		}
 		s.AjaxOk("save success")
 	}
@@ -183,7 +174,7 @@ func RemoveRepeatedElement(arr []string) (newArr []string) {
 // 更改状态
 func (s *ClientController) ChangeStatus() {
 	id := s.GetIntNoErr("id")
-	if client, err := database.GetDb().GetClientById(id); err == nil {
+	if client, err := Mapper.GetDb().GetClientById(id); err == nil {
 		client.Valid = s.GetBoolNoErr("status")
 		if client.Valid == false {
 			server.DelClientConnect(client.Id)
@@ -196,7 +187,7 @@ func (s *ClientController) ChangeStatus() {
 // 删除客户端
 func (s *ClientController) Del() {
 	id := s.GetIntNoErr("id")
-	if err := database.GetDb().DelClient(id); err != nil {
+	if err := Mapper.GetDb().DelClient(id); err != nil {
 		s.AjaxErr("delete error")
 	}
 	//server.DelTunnelAndHostByClientId(id, false)

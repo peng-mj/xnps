@@ -4,20 +4,20 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"os"
 	"strconv"
 	"sync"
 	"time"
-	"xnps/lib/database/models"
+	"xnps/database/Mapper"
+	"xnps/database/models"
 	"xnps/lib/nps_mux"
 
-	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/logs"
 	"xnps/lib/common"
 	"xnps/lib/conn"
 	"xnps/lib/crypt"
-	"xnps/lib/database"
 	"xnps/lib/version"
 	"xnps/server/connection"
 	"xnps/server/tool"
@@ -72,9 +72,10 @@ func (s *Bridge) StartTunnel() error {
 	go s.ping()
 	if s.tunnelType == "kcp" {
 		logs.Info("server start, the bridge type is %s, the bridge port is %d", s.tunnelType, s.TunnelPort)
-		return conn.NewKcpListenerAndProcess(beego.AppConfig.String("bridge_ip")+":"+beego.AppConfig.String("bridge_port"), func(c net.Conn) {
-			s.clientProcess(conn.NewConn(c))
-		})
+		//return conn.NewKcpListenerAndProcess(beego.AppConfig.String("bridge_ip")+":"+beego.AppConfig.String("bridge_port"), func(c net.Conn) {
+		//	s.clientProcess(conn.NewConn(c))
+		//})
+		return errors.New("kcp is not support. and it will remove later")
 	} else {
 		listener, err := connection.GetBridgeListener(s.tunnelType)
 		if err != nil {
@@ -89,50 +90,6 @@ func (s *Bridge) StartTunnel() error {
 	}
 	return nil
 }
-
-//
-//// 从客户端获取运行状况
-//// get health information from client
-//func (s *Bridge) GetHealthFromClient(id int, c *conn.Conn) {
-//	for {
-//		logs.Info("health info")
-//		if info, status, err := c.GetHealthInfo(); err != nil {
-//			break
-//		} else if !status { //the status is true , return target to the targetArr
-//			file.GetDb().JsonDb.Tasks.Range(func(key, value interface{}) bool {
-//				v := value.(*file.Tunnel)
-//				if v.Client.Id == id && v.Mode == "tcp" && strings.Contains(v.Target.TargetStr, info) {
-//					v.Lock()
-//					if v.Target.TargetArr == nil || (len(v.Target.TargetArr) == 0 && len(v.HealthRemoveArr) == 0) {
-//						v.Target.TargetArr = common.TrimArr(strings.Split(v.Target.TargetStr, "\n"))
-//					}
-//					v.Target.TargetArr = common.RemoveArrVal(v.Target.TargetArr, info)
-//					if v.HealthRemoveArr == nil {
-//						v.HealthRemoveArr = make([]string, 0)
-//					}
-//					logs.Info(info)
-//					v.HealthRemoveArr = append(v.HealthRemoveArr, info)
-//					v.Unlock()
-//				}
-//				return true
-//			})
-//
-//		} else { //the status is false,remove target from the targetArr
-//			file.GetDb().JsonDb.Tasks.Range(func(key, value interface{}) bool {
-//				v := value.(*file.Tunnel)
-//				if v.Client.Id == id && v.Mode == "tcp" && common.IsArrContains(v.HealthRemoveArr, info) && !common.IsArrContains(v.Target.TargetArr, info) {
-//					v.Lock()
-//					v.Target.TargetArr = append(v.Target.TargetArr, info)
-//					v.HealthRemoveArr = common.RemoveArrVal(v.HealthRemoveArr, info)
-//					v.Unlock()
-//				}
-//				return true
-//			})
-//
-//		}
-//	}
-//	s.DelClient(id)
-//}
 
 // 验证失败，返回错误验证flag，并且关闭连接
 func (s *Bridge) verifyError(c *conn.Conn) {
@@ -166,19 +123,20 @@ func (s *Bridge) clientProcess(c *conn.Conn) {
 		return
 	}
 	//write server version to client
-	c.Write([]byte(crypt.Sha256(version.GetCoreVersion())))
+	c.Write([]byte(crypt.Sha1(version.GetCoreVersion())))
 	c.SetReadDeadlineBySecond(5)
 	var buf []byte
 	//get vKey from client
 	//如为md5那么下面数字为32
 	//如为sha256那么下面的数字为64
-	if buf, err = c.GetShortContent(64); err != nil {
+	if buf, err = c.GetShortContent(40); err != nil {
 		c.Close()
 		return
 	}
 	//TODO:客户端验证
 	//verify
-	id, err := database.GetDb().GetIdByVerifyKey(string(buf), c.Conn.RemoteAddr().String())
+	//id, err := Mapper.GetDb().GetClientByAccessUser(string(buf), c.Conn.RemoteAddr().String())
+	client, err := Mapper.GetDb().GetClientByAccessUser(string(buf), string(buf))
 	if err != nil {
 		logs.Info("Current client connection validation error, close this client:", c.Conn.RemoteAddr())
 		s.verifyError(c)
@@ -186,9 +144,8 @@ func (s *Bridge) clientProcess(c *conn.Conn) {
 	} else {
 		s.verifySuccess(c)
 	}
-	//TODO:这个flag类型，有点不懂
 	if flag, err := c.ReadFlag(); err == nil {
-		s.typeDeal(flag, c, id, string(ver))
+		s.typeDeal(flag, c, client.Id, string(ver))
 	} else {
 		logs.Warn(err, flag)
 	}
@@ -201,25 +158,25 @@ func (s *Bridge) DelClient(id int64) {
 			v.(*Client).signal.Close()
 		}
 		s.Client.Delete(id)
-		if database.GetDb().IsPubClient(id) {
+		if Mapper.GetDb().CheckClientValid(id) {
 			return
 		}
-		if c, err := database.GetDb().GetClientById(id); err == nil {
+		if c, err := Mapper.GetDb().GetClientById(id); err == nil {
 			s.CloseClient <- c.Id
 		}
 	}
 }
 
 // use different
-func (s *Bridge) typeDeal(typeVal string, c *conn.Conn, id int64, ver string) {
-	isPub := database.GetDb().IsPubClient(id)
+func (s *Bridge) typeDeal(typeVal string, conn *conn.Conn, id int64, ver string) {
+	valid := Mapper.GetDb().CheckClientValid(id)
 	switch typeVal {
 	case common.WORK_MAIN:
-		if isPub {
-			c.Close()
+		if valid {
+			conn.Close()
 			return
 		}
-		tcpConn, ok := c.Conn.(*net.TCPConn)
+		tcpConn, ok := conn.Conn.(*net.TCPConn)
 		if ok {
 			// add tcp keep alive option for signal connection
 			_ = tcpConn.SetKeepAlive(true)
@@ -227,68 +184,47 @@ func (s *Bridge) typeDeal(typeVal string, c *conn.Conn, id int64, ver string) {
 		}
 		//TODO:这里有待考虑
 		//the vKey connect by another ,close the client of before
-		if v, ok := s.Client.LoadOrStore(id, NewClient(nil, nil, c, ver)); ok {
+		if v, ok := s.Client.LoadOrStore(id, NewClient(nil, nil, conn, ver)); ok {
 			if v.(*Client).signal != nil {
 				v.(*Client).signal.WriteClose()
 			}
-			v.(*Client).signal = c
+			v.(*Client).signal = conn
 			v.(*Client).Version = ver
 		}
-		//go s.GetHealthFromClient(id, c)
-		logs.Info("clientId %d connection succeeded, address:%s ", id, c.Conn.RemoteAddr())
+		//go s.GetHealthFromClient(id, conn)
+		slog.Info("连接成功", "clientId %d connection succeeded, address:%s ", id, conn.Conn.RemoteAddr())
+
 	//	TODO:隧道连接在这里
 	case common.WORK_CHAN:
-		muxConn := nps_mux.NewMux(c.Conn, s.tunnelType, s.disconnectTime)
+		muxConn := nps_mux.NewMux(conn.Conn, s.tunnelType, s.disconnectTime)
 		if v, ok := s.Client.LoadOrStore(id, NewClient(muxConn, nil, nil, ver)); ok {
 			v.(*Client).tunnel = muxConn
 		}
 
 	case common.WORK_CONFIG:
-		client, err := database.GetDb().GetClientById(id)
-		if err != nil || (!isPub && !client.AllowUseConfigFile) {
-			c.Close()
+		client, err := Mapper.GetDb().GetClientById(id)
+		if err != nil || (!valid && !client.AllowUseConfigFile) {
+			conn.Close()
 			return
 		}
-		binary.Write(c, binary.LittleEndian, isPub)
-		go s.getConfig(c, isPub, client)
+		binary.Write(conn, binary.LittleEndian, valid)
+		go s.getConfig(conn, valid, client)
 	case common.WORK_REGISTER:
-		go s.register(c)
-	case common.WORK_SECRET:
-		if passwdBytes, err := c.GetShortContent(64); err == nil {
-			s.SecretChan <- conn.NewSecret(string(passwdBytes), c)
-		} else {
-			logs.Error("secret error, failed to match the key successfully")
-		}
+		go s.register(conn)
+	//case common.WORK_SECRET: //私密代理
+	//	if passwdBytes, err := conn.GetShortContent(40); err == nil {
+	//		s.SecretChan <- conn.NewSecret(string(passwdBytes), conn)
+	//	} else {
+	//		logs.Error("secret error, failed to match the key successfully")
+	//	}
 	case common.WORK_FILE:
-		muxConn := nps_mux.NewMux(c.Conn, s.tunnelType, s.disconnectTime)
+		muxConn := nps_mux.NewMux(conn.Conn, s.tunnelType, s.disconnectTime)
 		if v, ok := s.Client.LoadOrStore(id, NewClient(nil, muxConn, nil, ver)); ok {
 			v.(*Client).file = muxConn
 		}
-	case common.WORK_P2P:
-		//read md5 secret
-		if b, err := c.GetShortContent(64); err != nil {
-			logs.Error("p2p error,", err.Error())
-		} else if t := database.GetDb().GetTaskByMd5Password(string(b)); t == nil {
-			logs.Error("p2p error, failed to match the key successfully")
-		} else {
-			if v, ok := s.Client.Load(t.Client.Id); !ok {
-				return
-			} else {
-				//向密钥对应的客户端发送与服务端udp建立连接信息，地址，密钥
-				v.(*Client).signal.Write([]byte(common.NEW_UDP_CONN))
-				svrAddr := beego.AppConfig.String("p2p_ip") + ":" + beego.AppConfig.String("p2p_port")
-				if err != nil {
-					logs.Warn("get local udp addr error")
-					return
-				}
-				v.(*Client).signal.WriteLenContent([]byte(svrAddr))
-				v.(*Client).signal.WriteLenContent(b)
-				//向该请求者发送建立连接请求,服务器地址
-				c.WriteLenContent([]byte(svrAddr))
-			}
-		}
+
 	}
-	c.SetAlive(s.tunnelType)
+	conn.SetAlive(s.tunnelType)
 	return
 }
 
@@ -393,26 +329,17 @@ loop:
 				break loop
 			} else {
 				var str string
-				id, err := database.GetDb().GetClientIdByVkey(string(b))
+				id, err := Mapper.GetDb().GetClientIdByVkey(string(b))
 				if err != nil {
 					break loop
 				}
-				tunnelList, _ := database.GetDb().GetTunnelListByClientId(0, id)
+				tunnelList, _ := Mapper.GetDb().GetTunnelListByClientId(0, id)
 				//TODO:理解，为什么这么做？标记+分割号
 				//应该是告诉客户端，将要创建的通道
 				for i := range tunnelList {
 					str += tunnelList[i].Remark + common.CONN_DATA_SEQ
 				}
 
-				//这里为什么要写到连接里边
-				//database.GetDb().JsonDb.Tasks.Range(func(key, value interface{}) bool {
-				//	tun := value.(*models.Tunnel)
-				//	//if _, ok := s.runList[v.Id]; ok && v.Client.Id == id {
-				//	if _, ok := s.runList.Load(tun.Id); ok && tun.Client.Id == id {
-				//		str += tun.Name + common.CONN_DATA_SEQ
-				//	}
-				//	return true
-				//})
 				_ = binary.Write(c, binary.LittleEndian, int32(len([]byte(str))))
 				_ = binary.Write(c, binary.LittleEndian, []byte(str))
 			}
@@ -423,13 +350,13 @@ loop:
 				c.WriteAddFail()
 				break loop
 			} else {
-				if err = database.GetDb().NewClient(client); err != nil {
+				if err = Mapper.GetDb().CreateNewClient(client); err != nil {
 					fail = true
 					c.WriteAddFail()
 					break loop
 				}
 				c.WriteAddOk()
-				c.Write([]byte(client.VerifyKey)) //这是为什么？还要向客户端写密钥？
+				c.Write([]byte(client.AccessKey)) //这是为什么？还要向客户端写密钥？
 				s.Client.Store(client.Id, NewClient(nil, nil, nil, ""))
 			}
 		case common.NEW_TASK:
@@ -466,27 +393,27 @@ loop:
 						tunnel.Target = tun.Target
 						tunnel.Remark = tun.Remark
 					} else {
-						tunnel.Remark = tun.Remark + "_" + strconv.Itoa(tunnel.ServerPort)
+						tunnel.Remark = tun.Remark + "_" + strconv.Itoa(int(tunnel.ServerPort))
 						tunnel.Target = new(models.Target)
 						if tun.TargetAddr != "" {
-							tunnel.Target.TargetStr = tun.TargetAddr + ":" + strconv.Itoa(targets[i])
+							tunnel.Target.TargetStr = tun.TargetAddr + ":" + strconv.Itoa(int(targets[i]))
 						} else {
-							tunnel.Target.TargetStr = strconv.Itoa(targets[i])
+							tunnel.Target.TargetStr = strconv.Itoa(int(targets[i]))
 						}
 					}
 					//获取新的ID
 					//tunnel.Id = database.GetDb().JsonDb.GetTaskId()
 					tunnel.Status = true
-					tunnel.Flow = new(models.Flow)
-					tunnel.NoStore = true
+					tunnel.Flow = &models.Flow{ClientId: tunnel.ClientId}
+					//tunnel.NoStore = true
 					tunnel.Client = client
 					tunnel.Password = tun.Password
 					tunnel.LocalPath = tun.LocalPath
 					tunnel.StripPre = tun.StripPre
-					tunnel.MultiAccount = tun.MultiAccount
+					//tunnel.MultiAccount = tun.MultiAccount
 					//检查某客户端是否有存在的通道
-					if !database.GetDb().HasTunnel(client.Id, tunnel) {
-						if err := database.GetDb().NewTask(tunnel); err != nil {
+					if !Mapper.GetDb().HasTunnel(client.Id, tunnel) {
+						if err := Mapper.GetDb().NewTunnel(tunnel); err != nil {
 							logs.Notice("Add task error ", err.Error())
 							fail = true
 							c.WriteAddFail()

@@ -1,17 +1,16 @@
 package controllers
 
 import (
+	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/cache"
 	"github.com/astaxie/beego/utils/captcha"
 	"math/rand"
 	"net"
 	"sync"
 	"time"
-	"xnps/lib/database/models"
-
-	"github.com/astaxie/beego"
+	"xnps/database/Mapper"
+	"xnps/database/models"
 	"xnps/lib/common"
-	"xnps/lib/database"
 	"xnps/server"
 )
 
@@ -96,8 +95,8 @@ func (self *LoginController) doLogin(username, password string, explicit bool) b
 		//		return true
 		//	}
 		//	if v.HttpUser == "" && v.HttpPasswd == "" {
-		//		//为什么是 VerifyKey！=password
-		//		if username != "user" || v.VerifyKey != password {
+		//		//为什么是 AccessKey！=password
+		//		if username != "user" || v.AccessKey != password {
 		//			return true
 		//		} else {
 		//			auth = true
@@ -152,7 +151,7 @@ func (self *LoginController) Register() {
 			HttpPasswd: self.GetString("password"),
 			Flow:       &models.Flow{},
 		}
-		if err := database.GetDb().NewClient(t); err != nil {
+		if err := Mapper.GetDb().CreateNewClient(t); err != nil {
 			self.Data["json"] = map[string]interface{}{"status": 0, "msg": err.Error()}
 		} else {
 			self.Data["json"] = map[string]interface{}{"status": 1, "msg": "register success"}

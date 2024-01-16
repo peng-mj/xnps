@@ -18,8 +18,8 @@ var webPort string
 
 func InitConnectionService() {
 	bridgePort = beego.AppConfig.String("bridge_port")
-	httpsPort = beego.AppConfig.String("https_proxy_port")
-	httpPort = beego.AppConfig.String("http_proxy_port")
+	//httpsPort = beego.AppConfig.String("https_proxy_port")
+	//httpPort = beego.AppConfig.String("http_proxy_port")
 	webPort = beego.AppConfig.String("web_port")
 	//监测端口共用
 	if httpPort == bridgePort || httpsPort == bridgePort || webPort == bridgePort {
@@ -45,23 +45,24 @@ func GetBridgeListener(tp string) (net.Listener, error) {
 	return net.ListenTCP("tcp", &net.TCPAddr{net.ParseIP(beego.AppConfig.String("bridge_ip")), p, ""})
 }
 
-func GetHttpListener() (net.Listener, error) {
-	if pMux != nil && httpPort == bridgePort {
-		logs.Info("start http listener, port is", bridgePort)
-		return pMux.GetHttpListener(), nil
-	}
-	logs.Info("start http listener, port is", httpPort)
-	return getTcpListener(beego.AppConfig.String("http_proxy_ip"), httpPort)
-}
-
-func GetHttpsListener() (net.Listener, error) {
-	if pMux != nil && httpsPort == bridgePort {
-		logs.Info("start https listener, port is", bridgePort)
-		return pMux.GetHttpsListener(), nil
-	}
-	logs.Info("start https listener, port is", httpsPort)
-	return getTcpListener(beego.AppConfig.String("http_proxy_ip"), httpsPort)
-}
+//
+//func GetHttpListener() (net.Listener, error) {
+//	if pMux != nil && httpPort == bridgePort {
+//		logs.Info("start http listener, port is", bridgePort)
+//		return pMux.GetHttpListener(), nil
+//	}
+//	logs.Info("start http listener, port is", httpPort)
+//	return getTcpListener(beego.AppConfig.String("http_proxy_ip"), httpPort)
+//}
+//
+//func GetHttpsListener() (net.Listener, error) {
+//	if pMux != nil && httpsPort == bridgePort {
+//		logs.Info("start https listener, port is", bridgePort)
+//		return pMux.GetHttpsListener(), nil
+//	}
+//	logs.Info("start https listener, port is", httpsPort)
+//	return getTcpListener(beego.AppConfig.String("http_proxy_ip"), httpsPort)
+//}
 
 func GetWebManagerListener() (net.Listener, error) {
 	if pMux != nil && webPort == bridgePort {

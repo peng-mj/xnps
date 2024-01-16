@@ -7,7 +7,8 @@ import (
 	"strconv"
 	"sync"
 	"time"
-	"xnps/lib/database/models"
+	"xnps/database/Mapper"
+	"xnps/database/models"
 	"xnps/lib/version"
 
 	"github.com/astaxie/beego"
@@ -18,7 +19,6 @@ import (
 	"github.com/shirou/gopsutil/v3/net"
 	"xnps/bridge"
 	"xnps/lib/common"
-	"xnps/lib/database"
 	"xnps/server/proxy"
 	"xnps/server/tool"
 )
@@ -37,12 +37,12 @@ func init() {
 func InitFromCsv() {
 	//Add a public password
 	if vkey := beego.AppConfig.String("public_vkey"); vkey != "" {
-		c := database.NewClient(vkey, true, true)
-		database.GetDb().NewClient(c)
+		c := Mapper.NewClient(vkey)
+		Mapper.GetDb().CreateNewClient(c)
 		RunList.Store(c.Id, nil)
 		//RunList[c.Id] = nil
 	}
-	tunList, _ := database.GetDb().GetAllTunnelList(1)
+	tunList, _ := Mapper.GetDb().GetAllTunnelList(1)
 	//Initialize services in server-side files
 	for i := range tunList {
 		if tunList[i].Valid {
@@ -67,7 +67,7 @@ func DealBridgeTask() {
 			StopServer(t.Id)
 		case id := <-Bridge.CloseClient:
 			//DelTunnelAndHostByClientId(id, true)
-			err := database.GetDb().DelClient(id)
+			err := Mapper.GetDb().DelClient(id)
 			if err != nil {
 				logs.Warn("del client error, the client don`t exits")
 			}
@@ -81,9 +81,9 @@ func DealBridgeTask() {
 			StartTask(tunnel.Id)
 		case s := <-Bridge.SecretChan:
 			logs.Trace("New secret connection, addr", s.Conn.Conn.RemoteAddr())
-			if t := database.GetDb().GetTaskByMd5Password(s.Password); t != nil {
+			if t := Mapper.GetDb().GetTunnelByMd5Password(s.Password); t != nil {
 				if t.Status {
-					go proxy.NewBaseServer(Bridge, t).DealClient(s.Conn, t.Client, t.Target.TargetStr, nil, common.CONN_TCP, nil, t.Flow, t.Target.LocalProxy, nil)
+					go proxy.NewBaseServer(Bridge, t).DealClient(s.Conn, t.Client, t.Target.TargetStr, nil, common.CONN_TCP, nil, t.Target.LocalProxy, nil)
 				} else {
 					s.Conn.Close()
 					logs.Trace("This key %s cannot be processed,status is close", s.Password)
@@ -106,11 +106,11 @@ func StartNewServer(bridgePort int, cnf *models.Tunnel, bridgeType string, timeo
 		}
 	}()
 	//p2p可以去掉
-	if p, err := beego.AppConfig.Int("p2p_port"); err == nil {
-		go proxy.NewP2PServer(p).Start()
-		go proxy.NewP2PServer(p + 1).Start()
-		go proxy.NewP2PServer(p + 2).Start()
-	}
+	//if p, err := beego.AppConfig.Int("p2p_port"); err == nil {
+	//	go proxy.NewP2PServer(p).Start()
+	//	go proxy.NewP2PServer(p + 1).Start()
+	//	go proxy.NewP2PServer(p + 2).Start()
+	//}
 	go DealBridgeTask()
 	go dealClientFlow()
 	if svr := NewMode(Bridge, cnf); svr != nil {
@@ -142,10 +142,7 @@ func NewMode(Bridge *bridge.Bridge, c *models.Tunnel) proxy.Service {
 	switch c.Mode {
 	case "tcp", "file": //这里需要修改随机
 		service = proxy.NewTunnelModeServer(proxy.ProcessTunnel, Bridge, c)
-	case "socks5":
-		service = proxy.NewSock5ModeServer(Bridge, c)
-	case "httpProxy":
-		service = proxy.NewTunnelModeServer(proxy.ProcessHttp, Bridge, c)
+
 	case "tcpTrans":
 		service = proxy.NewTunnelModeServer(proxy.HandleTrans, Bridge, c)
 	case "udp":
@@ -159,13 +156,7 @@ func NewMode(Bridge *bridge.Bridge, c *models.Tunnel) proxy.Service {
 		}
 		AddTask(t)
 		service = proxy.NewWebServer(Bridge)
-	case "httpHostServer": //域名解析
-		httpPort, _ := beego.AppConfig.Int("http_proxy_port")
-		httpsPort, _ := beego.AppConfig.Int("https_proxy_port")
-		useCache, _ := beego.AppConfig.Bool("http_cache")
-		cacheLen, _ := beego.AppConfig.Int("http_cache_length")
-		addOrigin, _ := beego.AppConfig.Bool("http_add_origin_header")
-		service = proxy.NewHttp(Bridge, c, httpPort, httpsPort, useCache, cacheLen, addOrigin)
+
 	}
 	return service
 }
@@ -182,12 +173,12 @@ func StopServer(id int64) error {
 		} else {
 			logs.Warn("stop server id %d error", id)
 		}
-		if t, err := database.GetDb().GetTaskById(id); err != nil {
+		if t, err := Mapper.GetDb().GetTaskById(id); err != nil {
 			return err
 		} else {
 			t.Status = false
 			logs.Info("close port %d,remark %s,client id %d,task id %d", t.ServerPort, t.Remark, t.Client.Id, t.Id)
-			database.GetDb().UpdateTask(t)
+			Mapper.GetDb().UpdateTunnel(t)
 		}
 		//delete(RunList, id)
 		RunList.Delete(id)
@@ -231,12 +222,12 @@ func AddTask(t *models.Tunnel) error {
 
 // start task
 func StartTask(id int64) error {
-	if t, err := database.GetDb().GetTaskById(id); err != nil {
+	if t, err := Mapper.GetDb().GetTaskById(id); err != nil {
 		return err
 	} else {
 		AddTask(t)
 		t.Status = true
-		database.GetDb().UpdateTask(t)
+		Mapper.GetDb().UpdateTunnel(t)
 	}
 	return nil
 }
@@ -249,7 +240,7 @@ func DelTask(id int64) error {
 			return err
 		}
 	}
-	return database.GetDb().DelTask(id)
+	return Mapper.GetDb().DelTunnel(id)
 }
 
 // 隧道列表分页，然后返回隧道
@@ -257,7 +248,7 @@ func DelTask(id int64) error {
 func GetTunnel(start, length int, modelType string, clientId int64, search string) ([]*models.Tunnel, int) {
 	list := make([]*models.Tunnel, 0)
 	//var cnt int
-	mds, length := database.GetDb().GetTunnelListByClientIdWithPage(start, length, modelType, clientId)
+	mds, length := Mapper.GetDb().GetTunnelListByClientIdWithPage(start, length, modelType, clientId)
 	for c := range mds {
 		list = append(list, &mds[c])
 	}
@@ -270,7 +261,7 @@ func GetTunnel(start, length int, modelType string, clientId int64, search strin
 	//		if (modelType != "" && v.Mode != modelType || (clientId != 0 && v.Client.Id != clientId)) || (modelType == "" && clientId != v.Client.Id) {
 	//			continue
 	//		}
-	//		if search != "" && !(v.Id == int64(common.GetIntNoErrByStr(search)) || v.ServerPort == common.GetIntNoErrByStr(search) || strings.Contains(v.Password, search) || strings.Contains(v.Name, search) || strings.Contains(v.Client.VerifyKey, search)) {
+	//		if search != "" && !(v.Id == int64(common.GetIntNoErrByStr(search)) || v.ServerPort == common.GetIntNoErrByStr(search) || strings.Contains(v.Password, search) || strings.Contains(v.Name, search) || strings.Contains(v.Client.AccessKey, search)) {
 	//			continue
 	//		}
 	//		cnt++
@@ -297,7 +288,7 @@ func GetTunnel(start, length int, modelType string, clientId int64, search strin
 
 // get client list
 func GetClientList(start, length int64, search, sort, order string, clientId int) (list []models.Client, cnt int) {
-	list, cnt = database.GetDb().GetClientList(start, length, search, sort, order, clientId)
+	list, cnt = Mapper.GetDb().GetAllClientList(start, length, search, sort, order, clientId)
 	dealClientData()
 	return
 }
@@ -307,7 +298,7 @@ func GetClientList(start, length int64, search, sort, order string, clientId int
 func dealClientData() {
 	//logs.Info("dealClientData.........")
 	//这个地方判断为什么？
-	database.GetDb().SetClientStatus(true, 0)
+	Mapper.GetDb().SetClientStatus(true, 0)
 
 	//database.GetDb().JsonDb.Clients.Range(func(key, value interface{}) bool {
 	//	v := value.(*models.Client)
@@ -365,7 +356,7 @@ func dealClientData() {
 //		return true
 //	})
 //	for _, id := range ids {
-//		DelTask(id)
+//		DelTunnel(id)
 //	}
 //	ids = ids[:0]
 //	file.GetDb().JsonDb.Hosts.Range(func(key, value interface{}) bool {
@@ -394,7 +385,7 @@ func GetDashboardData() map[string]interface{} {
 	data["version"] = version.VERSION
 	//data["hostCount"] = common.GeSynctMapLen(file.GetDb().JsonDb.Hosts)
 	//data["clientCount"] = common.GeSynctMapLen(database.GetDb().JsonDb.Clients)
-	data["clientCount"] = database.GetDb().GetAllClientCount(-1, -1)
+	data["clientCount"] = Mapper.GetDb().GetAllClientCount(-1, -1)
 	if beego.AppConfig.String("public_vkey") != "" { //remove public vkey
 		data["clientCount"] = data["clientCount"].(int) - 1
 	}
@@ -413,16 +404,16 @@ func GetDashboardData() map[string]interface{} {
 	//	return true
 	//})
 	//TODO:这里需要检查一下,valid的使用
-	data["clientOnlineCount"] = database.GetDb().GetAllClientCount(1, -1)
+	data["clientOnlineCount"] = Mapper.GetDb().GetAllClientCount(1, -1)
 	data["inletFlowCount"] = int(in)
 	data["exportFlowCount"] = int(out)
 	//分别获得各类隧道的数量
-	var tcp = database.GetDb().GetClientCountByMode("tcp")
-	var udp = database.GetDb().GetClientCountByMode("udp")
-	var secret = database.GetDb().GetClientCountByMode("secret")
-	var socks5 = database.GetDb().GetClientCountByMode("socks5")
-	var p2p = database.GetDb().GetClientCountByMode("p2p")
-	var http = database.GetDb().GetClientCountByMode("httpProxy")
+	var tcp = Mapper.GetDb().GetClientCountByMode("tcp")
+	var udp = Mapper.GetDb().GetClientCountByMode("udp")
+	var secret = Mapper.GetDb().GetClientCountByMode("secret")
+	var socks5 = Mapper.GetDb().GetClientCountByMode("socks5")
+	var p2p = Mapper.GetDb().GetClientCountByMode("p2p")
+	var http = Mapper.GetDb().GetClientCountByMode("httpProxy")
 	//var udp, secret, socks5, p2p, http int
 	//
 	//database.GetDb().JsonDb.Tasks.Range(func(key, value interface{}) bool {
@@ -463,7 +454,7 @@ func GetDashboardData() map[string]interface{} {
 	//	tcpCount += int(value.(*models.Client).NowConn)
 	//	return true
 	//})
-	count := database.GetDb().GetAllTunnelCountByStatus(true, common.MODE_TCP)
+	count := Mapper.GetDb().GetAllTunnelCountByStatus(true, common.MODE_TCP)
 	data["tcpCount"] = count
 	cpuPercet, _ := cpu.Percent(0, true)
 	var cpuAll float64
@@ -508,8 +499,8 @@ func flowSession(m time.Duration) {
 		select {
 		case <-ticker.C:
 			//file.GetDb().JsonDb.StoreHostToJsonFile()
-			database.GetDb().JsonDb.StoreTasksToJsonFile()
-			database.GetDb().JsonDb.StoreClientsToJsonFile()
+			//database.GetDb().JsonDb.StoreTasksToJsonFile()
+			//database.GetDb().JsonDb.StoreClientsToJsonFile()
 		}
 	}
 }

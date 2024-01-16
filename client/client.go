@@ -1,10 +1,8 @@
 package client
 
 import (
-	"bufio"
 	"bytes"
 	"net"
-	"net/http"
 	"strconv"
 	"sync"
 	"time"
@@ -53,12 +51,14 @@ var CloseClient bool
 // start
 func (s *TRPClient) Start() {
 	CloseClient = false
+	var err error
+	var c *conn.Conn
 retry:
 	if CloseClient {
 		return
 	}
 	NowStatus = 0
-	c, err := NewConn(s.bridgeConnType, s.vKey, s.svrAddr, common.WORK_MAIN, s.proxyUrl)
+	c, err = NewConn(s.bridgeConnType, s.vKey, s.svrAddr, common.WORK_MAIN, s.proxyUrl)
 	if err != nil {
 		logs.Error("The connection server failed and will be reconnected in 5 seconds, error", err.Error())
 		time.Sleep(time.Second * 5)
@@ -101,7 +101,7 @@ func (s *TRPClient) handleMain() {
 			} else if pwd, err := s.signal.GetShortLenContent(); err == nil {
 				var localAddr string
 				//The local port remains unchanged for a certain period of time
-				if v, ok := s.p2pAddr[crypt.Sha256(string(pwd)+strconv.Itoa(int(time.Now().Unix()/100)))]; !ok {
+				if v, ok := s.p2pAddr[crypt.Sha1(string(pwd)+strconv.Itoa(int(time.Now().Unix()/100)))]; !ok {
 					tmpConn, err := common.GetLocalUdpAddr()
 					if err != nil {
 						logs.Error(err)
@@ -184,32 +184,32 @@ func (s *TRPClient) handleChannel(srcLink net.Conn) {
 	link.Host = common.FormatAddress(link.Host)
 	//if Conn type is http, read the request and log
 	//logs.Info("type:", link.ConnType)
-	if link.ConnType == "http" {
-		//先对目标网络建立连接
-		if targetConnIo, err := net.DialTimeout(common.CONN_TCP, link.Host, link.Option.Timeout); err != nil {
-			logs.Warn("connect to %s error %s", link.Host, err.Error())
-			srcLink.Close()
-		} else {
-			srcConnIo := conn.GetConn(srcLink, link.Crypt, link.Compress, nil, false)
-			//两个连接的底层实现
-			go func() {
-				common.CopyConnectionBuffer(srcConnIo, targetConnIo)
-				srcConnIo.Close()
-				targetConnIo.Close()
-			}()
-			for {
-				if r, err := http.ReadRequest(bufio.NewReader(srcConnIo)); err != nil {
-					srcConnIo.Close()
-					targetConnIo.Close()
-					break
-				} else {
-					logs.Trace("http request, method %s, host %s, url %s, remote address %s", r.Method, r.Host, r.URL.Path, r.RemoteAddr)
-					r.Write(targetConnIo)
-				}
-			}
-		}
-		return
-	}
+	//if link.ConnType == "http" {
+	//	//先对目标网络建立连接
+	//	if targetConnIo, err := net.DialTimeout(common.CONN_TCP, link.Host, link.Option.Timeout); err != nil {
+	//		logs.Warn("connect to %s error %s", link.Host, err.Error())
+	//		srcLink.Close()
+	//	} else {
+	//		srcConnIo := conn.GetConn(srcLink, link.Crypt, link.Compress, nil, false)
+	//		//两个连接的底层实现
+	//		go func() {
+	//			common.CopyConnectionBuffer(srcConnIo, targetConnIo)
+	//			srcConnIo.Close()
+	//			targetConnIo.Close()
+	//		}()
+	//		for {
+	//			if r, err := http.ReadRequest(bufio.NewReader(srcConnIo)); err != nil {
+	//				srcConnIo.Close()
+	//				targetConnIo.Close()
+	//				break
+	//			} else {
+	//				logs.Trace("http request, method %s, host %s, url %s, remote address %s", r.Method, r.Host, r.URL.Path, r.RemoteAddr)
+	//				r.Write(targetConnIo)
+	//			}
+	//		}
+	//	}
+	//	return
+	//}
 	if link.ConnType == "udp5" {
 		logs.Trace("new %s connection with the goal of %s, remote address:%s", link.ConnType, link.Host, link.RemoteAddr)
 		s.handleUdp(srcLink)
@@ -220,7 +220,7 @@ func (s *TRPClient) handleChannel(srcLink net.Conn) {
 		srcLink.Close()
 	} else {
 		logs.Trace("new %s connection with the goal of %s, remote address:%s", link.ConnType, link.Host, link.RemoteAddr)
-		conn.CopyWaitGroup(srcLink, targetConn, link.Crypt, link.Compress, nil, nil, false, nil, nil)
+		conn.CopyWaitGroup(srcLink, targetConn, link.Crypt, link.Compress, nil, false, nil, nil)
 	}
 }
 

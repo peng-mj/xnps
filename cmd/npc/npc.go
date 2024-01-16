@@ -1,12 +1,12 @@
 package main
 
 import (
+	"context"
 	"flag"
-	"fmt"
 	"github.com/astaxie/beego/logs"
-	"github.com/ccding/go-stun/stun"
 	"github.com/kardianos/service"
 	"log"
+	"log/slog"
 	"os"
 	"os/exec"
 	"runtime"
@@ -14,9 +14,9 @@ import (
 	"sync"
 	"time"
 	"xnps/client"
+	"xnps/database/models"
 	"xnps/lib/common"
 	"xnps/lib/config"
-	"xnps/lib/database/models"
 	"xnps/lib/install"
 	"xnps/lib/version"
 )
@@ -26,7 +26,6 @@ var (
 	serverAddr     = flag.String("server", "", "Server addr (ip:port)")
 	configPath     = flag.String("config", "", "Configuration file path")
 	verifyKey      = flag.String("vkey", "", "Authentication key")
-	logType        = flag.String("log", "stdout", "Log output mode（stdout|file）")
 	connType       = flag.String("type", "tcp", "Connection type with the server（kcp|tcp）")
 	proxyUrl       = flag.String("proxy", "", "proxy socks5 url(eg:socks5://111:222@127.0.0.1:9007)")
 	logLevel       = flag.String("log_level", "7", "log level 0~7")
@@ -38,7 +37,6 @@ var (
 	logPath        = flag.String("log_path", "", "npc log path")
 	debug          = flag.Bool("debug", true, "npc debug")
 	pprofAddr      = flag.String("pprof", "", "PProf debug addr (ip:port)")
-	stunAddr       = flag.String("stun_addr", "stun.stunprotocol.org:3478", "stun server address (eg:stun.stunprotocol.org:3478)")
 	ver            = flag.Bool("version", false, "show current version")
 	disconnectTime = flag.Int("disconnect_timeout", 60, "not receiving check packet times, until timeout will disconnect the client")
 )
@@ -69,7 +67,7 @@ func main() {
 	svcConfig := &service.Config{
 		Name:        "Npc",
 		DisplayName: "nps内网穿透客户端",
-		Description: "一款轻量级、功能强大的内网穿透代理服务器。支持tcp、udp流量转发，支持内网http代理、内网socks5代理，同时支持snappy压缩、站点保护、加密传输、多路复用、header修改等。支持web图形化管理，集成多用户模式。",
+		Description: "一款轻量级、功能强大的内网穿透代理服务器。",
 		Option:      options,
 	}
 	if !common.IsWindows() {
@@ -93,8 +91,8 @@ func main() {
 		exit: make(chan struct{}),
 	}
 	s, err := service.New(prg, svcConfig)
-	if err != nil {
-		logs.Error(err, "service function disabled")
+	if err != nil { //输入参数为空时
+		slog.Error("npc.go", err, "service function disabled")
 		run()
 		// run without service
 		wg := sync.WaitGroup{}
@@ -108,49 +106,49 @@ func main() {
 			if len(os.Args) > 2 {
 				path := strings.Replace(os.Args[2], "-config=", "", -1)
 				if len(path) < 3 {
+					slog.Error("npc.go", context.Background())
 					log.Println("文件不存在", path)
 				}
 				client.GetTaskStatus(path)
 			}
-		case "register":
-			flag.CommandLine.Parse(os.Args[2:])
-			client.RegisterLocalIp(*serverAddr, *verifyKey, *connType, *proxyUrl, *registerTime)
+		//case "register": //不允许注册
+		//	flag.CommandLine.Parse(os.Args[2:])
+		//	client.RegisterLocalIp(*serverAddr, *verifyKey, *connType, *proxyUrl, *registerTime)
 		case "update":
 			install.UpdateNpc()
 			return
-		case "nat":
-			c := stun.NewClient()
-			c.SetServerAddr(*stunAddr)
-			nat, host, err := c.Discover()
-			if err != nil || host == nil {
-				logs.Error("get nat type error", err)
-				return
-			}
-			fmt.Printf("nat type: %s \npublic address: %s\n", nat.String(), host.String())
-			os.Exit(0)
+		//case "nat":
+		//	c := stun.CreateNewClient()
+		//	c.SetServerAddr(*stunAddr)
+		//	nat, host, err := c.Discover()
+		//	if err != nil || host == nil {
+		//		logs.Error("get nat type error", err)
+		//		return
+		//	}
+		//	fmt.Printf("nat type: %s \npublic address: %s\n", nat.String(), host.String())
+		//	os.Exit(0)
 		case "start", "stop", "restart":
 			// support busyBox and sysV, for openWrt
 			if service.Platform() == "unix-systemv" {
 				logs.Info("unix-systemv service")
-				cmd := exec.Command("/etc/init.d/"+svcConfig.Name, os.Args[1])
-				err := cmd.Run()
-				if err != nil {
-					logs.Error(err)
+
+				if err = exec.Command("/etc/init.d/"+svcConfig.Name, os.Args[1]).Run(); err != nil {
+					slog.Error("npc.go", "service"+os.Args[1]+" err", err)
 				}
 				return
 			}
-			err := service.Control(s, os.Args[1])
+			err = service.Control(s, os.Args[1])
 			if err != nil {
-				logs.Error("Valid actions: %q\n%s", service.ControlAction, err.Error())
+				slog.Error("npc.go", "Valid actions err", os.Args[1], service.ControlAction, err)
 			}
 			return
 		case "install":
 			service.Control(s, "stop")
 			service.Control(s, "uninstall")
 			install.InstallNpc()
-			err := service.Control(s, os.Args[1])
-			if err != nil {
-				logs.Error("Valid actions: %q\n%s", service.ControlAction, err.Error())
+
+			if err = service.Control(s, os.Args[1]); err != nil {
+				slog.Error("npc.go", "service"+os.Args[1]+" err", err)
 			}
 			if service.Platform() == "unix-systemv" {
 				logs.Info("unix-systemv service")
@@ -160,19 +158,21 @@ func main() {
 			}
 			return
 		case "uninstall":
-			err := service.Control(s, os.Args[1])
-			if err != nil {
-				logs.Error("Valid actions: %q\n%s", service.ControlAction, err.Error())
+			if err = service.Control(s, os.Args[1]); err != nil {
+				slog.Error("npc.go", "service"+os.Args[1]+" err", err)
 			}
 			if service.Platform() == "unix-systemv" {
-				logs.Info("unix-systemv service")
+				slog.Info("unix-systemv service")
 				os.Remove("/etc/rc.d/S90" + svcConfig.Name)
 				os.Remove("/etc/rc.d/K02" + svcConfig.Name)
 			}
 			return
 		}
 	}
-	s.Run()
+	if err = s.Run(); err != nil {
+		slog.Error("run npc false", "err", err)
+	}
+
 }
 
 type npc struct {

@@ -9,9 +9,8 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"xnps/database/models"
 	"xnps/lib/daemon"
-	"xnps/lib/database/models"
-
 	"xnps/lib/install"
 	"xnps/lib/version"
 	"xnps/server"
@@ -28,9 +27,8 @@ import (
 )
 
 var (
-	level    string
-	ver      = flag.Bool("version", false, "show current version")
-	confPath = flag.String("conf_path", "", "set current confPath")
+	level string
+	ver   = flag.Bool("version", false, "show current version")
 )
 
 func main() {

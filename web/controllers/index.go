@@ -1,8 +1,8 @@
 package controllers
 
 import (
-	"xnps/lib/database"
-	"xnps/lib/database/models"
+	"xnps/database/Mapper"
+	"xnps/database/models"
 	"xnps/server"
 	"xnps/server/tool"
 
@@ -118,15 +118,15 @@ func (s *IndexController) Add() {
 			s.AjaxErr("The port cannot be opened because it may has been occupied or is no longer allowed.")
 		}
 		var err error
-		if t.Client, err = database.GetDb().GetClientById(s.GetIntNoErr("client_id")); err != nil {
+		if t.Client, err = Mapper.GetDb().GetClientById(s.GetIntNoErr("client_id")); err != nil {
 			s.AjaxErr(err.Error())
 		}
 		//判断添加的通道数量是否超限制
-		if t.Client.MaxTunnelNum != 0 && database.GetDb().GetAllTunnelNumById(t.ClientId) >= t.Client.MaxTunnelNum {
+		if t.Client.MaxTunnelNum != 0 && Mapper.GetDb().GetAllTunnelNumById(t.ClientId) >= t.Client.MaxTunnelNum {
 			//if t.Client.MaxTunnelNum != 0 && t.Client.GetTunnelNum() >= t.Client.MaxTunnelNum {
 			s.AjaxErr("The number of tunnels exceeds the limit")
 		}
-		if err := database.GetDb().NewTask(t); err != nil {
+		if err := Mapper.GetDb().NewTunnel(t); err != nil {
 			s.AjaxErr(err.Error())
 		}
 		if err := server.AddTask(t); err != nil {
@@ -139,7 +139,7 @@ func (s *IndexController) Add() {
 func (s *IndexController) GetOneTunnel() {
 	id := s.GetIntNoErr("id")
 	data := make(map[string]interface{})
-	if t, err := database.GetDb().GetTaskById(id); err != nil {
+	if t, err := Mapper.GetDb().GetTaskById(id); err != nil {
 		data["code"] = 0
 	} else {
 		data["code"] = 1
@@ -151,7 +151,7 @@ func (s *IndexController) GetOneTunnel() {
 func (s *IndexController) Edit() {
 	id := s.GetIntNoErr("id")
 	if s.Ctx.Request.Method == "GET" {
-		if t, err := database.GetDb().GetTaskById(id); err != nil {
+		if t, err := Mapper.GetDb().GetTaskById(id); err != nil {
 			s.error()
 		} else {
 			s.Data["t"] = t
@@ -159,10 +159,10 @@ func (s *IndexController) Edit() {
 		s.SetInfo("edit tunnel")
 		s.display()
 	} else {
-		if t, err := database.GetDb().GetTaskById(id); err != nil {
+		if t, err := Mapper.GetDb().GetTaskById(id); err != nil {
 			s.error()
 		} else {
-			if client, err := database.GetDb().GetClientById(s.GetIntNoErr("client_id")); err != nil {
+			if client, err := Mapper.GetDb().GetClientById(s.GetIntNoErr("client_id")); err != nil {
 				s.AjaxErr("modified error,the client is not exist")
 				return
 			} else {
@@ -190,7 +190,7 @@ func (s *IndexController) Edit() {
 			t.StripPre = s.getEscapeString("strip_pre")
 			t.Remark = s.getEscapeString("remark")
 			t.Target.LocalProxy = s.GetBoolNoErr("local_proxy")
-			database.GetDb().UpdateTask(t)
+			Mapper.GetDb().UpdateTunnel(t)
 			server.StopServer(t.Id)
 			server.StartTask(t.Id)
 		}

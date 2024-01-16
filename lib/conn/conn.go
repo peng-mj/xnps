@@ -15,7 +15,7 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"xnps/lib/database/models"
+	"xnps/database/models"
 	"xnps/lib/goroutine"
 
 	"github.com/xtaci/kcp-go"
@@ -203,9 +203,7 @@ func (s *Conn) GetConfigInfo() (c *models.Client, err error) {
 	err = s.getInfo(&c)
 	c.Valid = true
 	c.Connected = true
-	if c.Flow == nil {
-		c.Flow = new(models.Flow)
-	}
+
 	//c.NoDisplay = false
 	return
 }
@@ -216,7 +214,7 @@ func (s *Conn) GetTunnelInfo() (t *models.Tunnel, err error) {
 	//t = new(file.Tunnel)
 	err = s.getInfo(&t)
 	//t.Id = database.GetDb().JsonDb.GetTaskId()
-	t.NoStore = true
+	//t.NoStore = true
 	t.Flow = new(models.Flow)
 	t.Target = new(models.Target)
 	//TODO:这里判断白名单端口
@@ -375,15 +373,14 @@ func SetUdpSession(sess *kcp.UDPSession) {
 }
 
 // conn1 mux conn
-func CopyWaitGroup(conn1, conn2 net.Conn, encrypt bool, snappy bool, rate *rate.Rate,
-	flow *models.Flow, isServer bool, rb []byte, task *models.Tunnel) {
+func CopyWaitGroup(conn1, conn2 net.Conn, encrypt bool, snappy bool, rate *rate.Rate, isServer bool, rb []byte, task *models.Tunnel) {
 	//var in, out int64
 	//var wg sync.WaitGroup
 	connHandle := GetConn(conn1, encrypt, snappy, rate, isServer)
 	if rb != nil {
 		connHandle.Write(rb)
 	}
-
+	flow := &models.Flow{ClientId: task.ClientId}
 	wg := new(sync.WaitGroup)
 	wg.Add(1)
 	err := goroutine.CopyConnsPool.Invoke(goroutine.NewConns(connHandle, conn2, flow, wg, task))

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"log/slog"
 	"math"
 	"math/rand"
 	"net"
@@ -44,7 +45,7 @@ func GetTaskStatus(path string) {
 	//read now vKey and write to server
 	if f, err := common.ReadAllFromFile(filepath.Join(common.GetTmpPath(), "npc_vkey.txt")); err != nil {
 		log.Fatalln(err)
-	} else if _, err := c.Write([]byte(crypt.Sha256(string(f)))); err != nil {
+	} else if _, err := c.Write([]byte(crypt.Sha1(string(f)))); err != nil {
 		log.Fatalln(err)
 	}
 	var isPub bool
@@ -64,7 +65,7 @@ func GetTaskStatus(path string) {
 			for _, port := range ports {
 				var remark string
 				if len(ports) > 1 {
-					remark = v.Remark + "_" + strconv.Itoa(port)
+					remark = v.Remark + "_" + strconv.Itoa(int(port))
 				} else {
 					remark = v.Remark
 				}
@@ -81,28 +82,31 @@ func GetTaskStatus(path string) {
 
 var errAdd = errors.New("The server returned an error, which port or host may have been occupied or not allowed to open.")
 
+// TODO:这是客户端最重要的
 func StartFromFile(path string) {
+	const pkName = "client  control.go StartFromFile()"
 	first := true
+	var err error
+	var c *conn.Conn
 	cnf, err := config.NewConfig(path)
 	if err != nil || cnf.CommonConfig == nil {
-		logs.Error("Config file %s loading error %s", path, err.Error())
+		slog.Error(pkName, "Config file ", path, " loading error", err)
 		os.Exit(0)
 	}
-	logs.Info("Loading configuration file %s successfully", path)
-
+	slog.Info(pkName, "Loading configuration file %s successfully", path)
 re:
 	if first || cnf.CommonConfig.AutoReconnection {
 		if !first {
-			logs.Info("Reconnecting...")
+			slog.Info(pkName, "status", "Reconnecting...")
 			time.Sleep(time.Second * 5)
 		}
 	} else {
 		return
 	}
 	first = false
-	c, err := NewConn(cnf.CommonConfig.Tp, cnf.CommonConfig.VKey, cnf.CommonConfig.Server, common.WORK_CONFIG, cnf.CommonConfig.ProxyUrl)
+	c, err = NewConn(cnf.CommonConfig.Tp, cnf.CommonConfig.VKey, cnf.CommonConfig.Server, common.WORK_CONFIG, cnf.CommonConfig.ProxyUrl)
 	if err != nil {
-		logs.Error(err)
+		slog.Error(pkName, "create connect err", err)
 		goto re
 	}
 	var isPub bool
@@ -113,8 +117,11 @@ re:
 	vkey := cnf.CommonConfig.VKey
 	if isPub {
 		// send global configuration to server and get status of config setting
-		if _, err := c.SendInfo(cnf.CommonConfig.Client, common.NEW_CONF); err != nil {
+		//从配置文件中启动
+		if _, err = c.SendInfo(cnf.CommonConfig.Client, common.NEW_CONF); err != nil {
 			logs.Error(err)
+			slog.Error(pkName, "send configuration info err", err)
+
 			goto re
 		}
 		if !c.GetAddStatus() {
@@ -129,7 +136,7 @@ re:
 		vkey = string(b)
 	}
 	//upgrade to os.WriteFile for golang 1.20
-	os.WriteFile(filepath.Join(common.GetTmpPath(), "npc_vkey.txt"), []byte(vkey), 0600)
+	err = os.WriteFile(filepath.Join(common.GetTmpPath(), "npc_vkey.txt"), []byte(vkey), 0600)
 
 	//send hosts to server
 	//for _, v := range cnf.Hosts {
@@ -145,7 +152,7 @@ re:
 
 	//send  task to server
 	for _, v := range cnf.Tasks {
-		if _, err := c.SendInfo(v, common.NEW_TASK); err != nil {
+		if _, err = c.SendInfo(v, common.NEW_TASK); err != nil {
 			logs.Error(err)
 			goto re
 		}
@@ -153,10 +160,10 @@ re:
 			logs.Error(errAdd, v.Ports, v.Remark)
 			goto re
 		}
-		if v.Mode == "file" {
-			//start local file server
-			go startLocalFileServer(cnf.CommonConfig, v, vkey)
-		}
+		//if v.Mode == "file" {
+		//	//start local file server
+		//	go startLocalFileServer(cnf.CommonConfig, v, vkey)
+		//}
 	}
 
 	//create local server secret or p2p
@@ -165,11 +172,7 @@ re:
 	}
 
 	c.Close()
-	if cnf.CommonConfig.Client.HttpUser == "" || cnf.CommonConfig.Client.HttpPasswd == "" {
-		logs.Notice("web access login username:user password:%s", vkey)
-	} else {
-		logs.Notice("web access login username:%s password:%s", cnf.CommonConfig.Client.HttpUser, cnf.CommonConfig.Client.HttpPasswd)
-	}
+
 	NewRPClient(cnf.CommonConfig.Server, vkey, cnf.CommonConfig.Tp, cnf.CommonConfig.ProxyUrl, cnf, cnf.CommonConfig.DisconnectTime).Start()
 	CloseLocalServer()
 	goto re
@@ -221,24 +224,29 @@ func NewConn(bridgeType string, vkey string, serverIp string, connType string, p
 		| 4  |  4  |   ...   |
 		+----+---------------+
 	*/
+	//TODO:客户端创建新的链接过程
 	//尝试连接
-	if _, err := c.Write([]byte(common.CONN_TEST)); err != nil {
+	if _, err = c.Write([]byte(common.CONN_TEST)); err != nil {
 		return nil, err
 	}
-	if err := c.WriteLenContent([]byte(version.GetCoreVersion())); err != nil {
+	if err = c.WriteLenContent([]byte(version.GetCoreVersion())); err != nil {
 		return nil, err
 	}
-	if err := c.WriteLenContent([]byte(version.VERSION)); err != nil {
+	if err = c.WriteLenContent([]byte(version.VERSION)); err != nil {
 		return nil, err
 	}
-	//因为使用了sha256加密，所以，长度从32修改为64
-	b, err := c.GetShortContent(64)
+	//因为使用了sha1加密，所以，长度从32修改为40
+	b, err := c.GetShortContent(40)
 	if err != nil {
 		logs.Error(err)
 		return nil, err
 	}
-	if crypt.Sha256(version.GetCoreVersion()) != string(b) {
-		logs.Error("The client does not match the serverIp version. The current core version of the client is", version.GetCoreVersion())
+	if crypt.Sha1(version.GetCoreVersion()) != string(b) {
+		slog.Error("内核版本不匹配", "The client does not match the serverIp version. The current core version of the client is", version.GetCoreVersion())
+		return nil, err
+	}
+	//TODO:这里后期验证AccessID和AccessKey
+	if _, err := c.Write([]byte(common.GetVerifyValue(vkey))); err != nil {
 		return nil, err
 	}
 	if _, err := c.Write([]byte(common.GetVerifyValue(vkey))); err != nil {
@@ -247,7 +255,7 @@ func NewConn(bridgeType string, vkey string, serverIp string, connType string, p
 	if s, err := c.ReadFlag(); err != nil {
 		return nil, err
 	} else if s == common.VERIFY_EER {
-		return nil, errors.New(fmt.Sprintf("Validation key %s incorrect", vkey))
+		return nil, fmt.Errorf("validation key %s incorrect", vkey)
 	}
 	if _, err := c.Write([]byte(connType)); err != nil {
 		return nil, err

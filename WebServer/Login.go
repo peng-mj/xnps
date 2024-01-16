@@ -12,8 +12,8 @@ import (
 	"time"
 	"xnps/WebServer/WebApi"
 	"xnps/WebServer/WebObj"
+	"xnps/database/Mapper"
 	"xnps/lib/crypt"
-	"xnps/lib/database"
 )
 
 func (w *WebServer) jwtMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
@@ -69,14 +69,14 @@ func (w *WebServer) Login(c echo.Context) (err error) {
 			if Salt, ok := w.salt.GetString(login.Username); ok {
 				slog.Info("salt=", Salt)
 				var passwd string
-				if passwd, err = database.GetDb().GetPasswdByUser(login.Username); err == nil {
+				if passwd, err = Mapper.GetDb().GetPasswdByUser(login.Username); err == nil {
 					//验证加密后的密码是否正确
 					if passwd = crypt.Sha256(Salt + "@" + passwd); login.Password != passwd {
 						err = errors.New("username or password error")
 					} else {
-						uuid := crypt.GetUlid()
-						token = w.generateToken(login.Username, uuid, passwd, 1)
-						w.secret.Add(uuid, passwd)
+						salt := crypt.GetUlid()
+						token = w.generateToken(login.Username, salt, passwd, 1)
+						w.secret.Add(salt, passwd)
 						w.salt.Remove(login.Username)
 					}
 				}
@@ -95,7 +95,7 @@ func (w *WebServer) DoLogin(c echo.Context) (err error) {
 	var Salt string
 	if err == nil {
 		if err = json.Unmarshal(body, &doLogin); err == nil {
-			if database.GetDb().CheckUserName(doLogin.Username) {
+			if Mapper.GetDb().CheckUserName(doLogin.Username) {
 				Salt = crypt.GenerateRandomVKey()
 				w.salt.Add(doLogin.Username, Salt)
 			}

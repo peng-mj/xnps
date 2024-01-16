@@ -2,14 +2,13 @@ package proxy
 
 import (
 	"errors"
+	"github.com/astaxie/beego/logs"
 	"net"
 	"net/http"
 	"sort"
 	"sync"
-	"xnps/lib/database/models"
-
-	"github.com/astaxie/beego/logs"
 	"xnps/bridge"
+	"xnps/database/models"
 	"xnps/lib/common"
 	"xnps/lib/conn"
 )
@@ -67,9 +66,7 @@ func (s *BaseServer) auth(r *http.Request, c *conn.Conn, u, p string) error {
 
 // check flow limit of the client ,and decrease the allow num of client
 func (s *BaseServer) CheckFlowAndConnNum(client *models.Client) error {
-	if client.Flow.FlowLimit > 0 && (client.Flow.FlowLimit<<20) < (client.Flow.ExportFlow+client.Flow.InletFlow) {
-		return errors.New("Traffic exceeded")
-	}
+	//TODO:这里检查流量限制
 
 	if !client.GetConn() {
 		return errors.New("Connections exceed the current client limit")
@@ -88,10 +85,10 @@ func in(target string, strArray []string) bool {
 
 // create a new connection and start bytes copying
 func (s *BaseServer) DealClient(c *conn.Conn, client *models.Client, addr string,
-	rb []byte, tp string, f func(), flow *models.Flow, localProxy bool, task *models.Tunnel) error {
+	rb []byte, tp string, callBack func(), localProxy bool, task *models.Tunnel) error {
 
 	// TODO: 判断访问地址是否在黑名单内
-	if common.IsBlackIp(c.RemoteAddr().String(), client.VerifyKey) {
+	if common.IsBlackIp(c.RemoteAddr().String(), client.AccessKey) {
 		c.Close()
 		return nil
 	}
@@ -102,10 +99,10 @@ func (s *BaseServer) DealClient(c *conn.Conn, client *models.Client, addr string
 		c.Close()
 		return err
 	} else {
-		if f != nil {
-			f()
+		if callBack != nil {
+			callBack()
 		}
-		conn.CopyWaitGroup(target, c.Conn, link.Crypt, link.Compress, client.Rate, flow, true, rb, task)
+		conn.CopyWaitGroup(target, c.Conn, link.Crypt, link.Compress, client.Rate, true, rb, task)
 	}
 	return nil
 }
