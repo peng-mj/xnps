@@ -1,6 +1,6 @@
 package models
 
-type BlockListInfo struct {
+type BlockRecode struct {
 	Id         int64  `gorm:"column:id;type:integer;primaryKey" json:"Id"`
 	BlockType  int64  `gorm:"column:block_type;type:integer;not null;default:1" json:"BlockType"`
 	SourceIp   string `gorm:"column:ip_info;type:text;not null;default:1" json:"SourceIp"`
@@ -10,6 +10,6 @@ type BlockListInfo struct {
 	CreateTime int64  `gorm:"column:create_time;type:integer;not null;default:1" json:"UpdateTime"`
 }
 
-func (*BlockListInfo) TableName() string {
+func (*BlockRecode) TableName() string {
 	return "block_recode"
 }

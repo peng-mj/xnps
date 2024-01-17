@@ -2,7 +2,8 @@ package main
 
 import (
 	"flag"
-	"log"
+	"gopkg.in/natefinch/lumberjack.v2"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -10,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"xnps/database/models"
+	"xnps/lib/SysTool"
 	"xnps/lib/daemon"
 	"xnps/lib/install"
 	"xnps/lib/version"
@@ -19,7 +21,6 @@ import (
 	"xnps/web/routers"
 
 	"github.com/astaxie/beego"
-	"github.com/astaxie/beego/logs"
 	"xnps/lib/common"
 	"xnps/lib/crypt"
 
@@ -52,23 +53,28 @@ func main() {
 	}
 
 	if err := beego.LoadAppConfig("ini", filepath.Join(common.GetRunPath(), "conf", "nps.conf")); err != nil {
-		log.Fatalln("load config file error", err.Error())
+		slog.Error("加载配置文件失败", "load config file error", err)
 	}
 
 	common.InitPProfFromFile()
 	if level = beego.AppConfig.String("log_level"); level == "" {
 		level = "7"
 	}
-	logs.Reset()
-	logs.EnableFuncCallDepth(true)
-	logs.SetLogFuncCallDepth(3)
-	logPath := beego.AppConfig.String("log_path")
-	if logPath == "" {
-		logPath = common.GetLogPath()
+	logPath := "./log/sunrun.log"
+	if !SysTool.DirExisted("./log") {
+		SysTool.CreateFolder("./log")
 	}
-	if common.IsWindows() {
-		logPath = strings.Replace(logPath, "\\", "\\\\", -1)
+
+	r := &lumberjack.Logger{
+		Filename:   logPath,
+		LocalTime:  true,
+		MaxSize:    20,
+		MaxAge:     7,
+		MaxBackups: 7,
+		Compress:   true,
 	}
+	logger := slog.New(slog.NewJSONHandler(r, nil))
+	slog.SetDefault(logger)
 	// init service
 	options := make(service.KeyValue)
 	svcConfig := &service.Config{
@@ -87,11 +93,7 @@ func main() {
 	}
 
 	svcConfig.Arguments = append(svcConfig.Arguments, "service")
-	if len(os.Args) > 1 && os.Args[1] == "service" {
-		_ = logs.SetLogger(logs.AdapterFile, `{"level":`+level+`,"filename":"`+logPath+`","daily":false,"maxlines":100000,"color":true}`)
-	} else {
-		_ = logs.SetLogger(logs.AdapterConsole, `{"level":`+level+`,"color":true}`)
-	}
+
 	if !common.IsWindows() {
 		svcConfig.Dependencies = []string{
 			"Requires=network.target",
@@ -103,7 +105,7 @@ func main() {
 	prg.exit = make(chan struct{})
 	s, err := service.New(prg, svcConfig)
 	if err != nil {
-		logs.Error(err, "service function disabled")
+		slog.Error("service function disabled", "error", err)
 		run()
 		// run without service
 		wg := sync.WaitGroup{}
@@ -124,17 +126,17 @@ func main() {
 
 			binPath := install.InstallNps()
 			svcConfig.Executable = binPath
-			s, err := service.New(prg, svcConfig)
+			s, err = service.New(prg, svcConfig)
 			if err != nil {
-				logs.Error(err)
+				slog.Error("create service error", "error", err)
 				return
 			}
 			err = service.Control(s, os.Args[1])
 			if err != nil {
-				logs.Error("Valid actions: %q\n%s", service.ControlAction, err.Error())
+				slog.Error("Valid actions: %q\n%s", service.ControlAction, err.Error())
 			}
 			if service.Platform() == "unix-systemv" {
-				logs.Info("unix-systemv service")
+				slog.Info("unix-systemv service")
 				confPath := "/etc/init.d/" + svcConfig.Name
 				os.Symlink(confPath, "/etc/rc.d/S90"+svcConfig.Name)
 				os.Symlink(confPath, "/etc/rc.d/K02"+svcConfig.Name)
@@ -142,26 +144,25 @@ func main() {
 			return
 		case "start", "restart", "stop":
 			if service.Platform() == "unix-systemv" {
-				logs.Info("unix-systemv service")
-				cmd := exec.Command("/etc/init.d/"+svcConfig.Name, os.Args[1])
-				err := cmd.Run()
+				slog.Info("unix-systemv service")
+				err = exec.Command("/etc/init.d/"+svcConfig.Name, os.Args[1]).Run()
 				if err != nil {
-					logs.Error(err)
+					slog.Error("运行系统命令出错", "cmd", os.Args[1], "error", err)
 				}
 				return
 			}
 			err := service.Control(s, os.Args[1])
 			if err != nil {
-				logs.Error("Valid actions: %q\n%s", service.ControlAction, err.Error())
+				slog.Error("Valid actions: %q\n%s", service.ControlAction, err.Error())
 			}
 			return
 		case "uninstall":
 			err := service.Control(s, os.Args[1])
 			if err != nil {
-				logs.Error("Valid actions: %q\n%s", service.ControlAction, err.Error())
+				slog.Error("Valid actions: %q\n%s", service.ControlAction, err.Error())
 			}
 			if service.Platform() == "unix-systemv" {
-				logs.Info("unix-systemv service")
+				slog.Info("unix-systemv service")
 				os.Remove("/etc/rc.d/S90" + svcConfig.Name)
 				os.Remove("/etc/rc.d/K02" + svcConfig.Name)
 			}
@@ -170,7 +171,7 @@ func main() {
 			install.UpdateNps()
 			return
 			//default:
-			//	logs.Error("command is not support")
+			//	slog.Error("command is not support")
 			//	return
 		}
 	}
@@ -202,13 +203,13 @@ func (p *nps) run() error {
 			const size = 64 << 10
 			buf := make([]byte, size)
 			buf = buf[:runtime.Stack(buf, false)]
-			logs.Warning("nps: panic serving %v: %v\n%s", err, string(buf))
+			slog.Warn("nps: panic serving", err, string(buf))
 		}
 	}()
 	run()
 	select {
 	case <-p.exit:
-		logs.Warning("stop...")
+		slog.Warn("stop...")
 	}
 	return nil
 }
@@ -220,12 +221,12 @@ func run() {
 	}
 	bridgePort, err := beego.AppConfig.Int("bridge_port")
 	if err != nil {
-		logs.Error("Getting bridge_port error", err)
+		slog.Error("Getting bridge_port error", err)
 		os.Exit(0)
 	}
 
-	logs.Info("the config path is:" + common.GetRunPath())
-	logs.Info("the version of server is %s ,allow client core version to be %s", version.VERSION, version.GetCoreVersion())
+	slog.Info("the config path is:" + common.GetRunPath())
+	slog.Info("the version of server is %s ,allow client core version to be %s", version.VERSION, version.GetCoreVersion())
 	//初始化
 	connection.InitConnectionService()
 	//crypt.InitTls(filepath.Join(common.GetRunPath(), "conf", "server.pem"), filepath.Join(common.GetRunPath(), "conf", "server.key"))

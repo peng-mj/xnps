@@ -1,9 +1,11 @@
 package common
 
 import (
+	"log/slog"
 	"os"
 	"path/filepath"
 	"runtime"
+	"xnps/lib/SysTool"
 )
 
 var ConfPath string
@@ -95,16 +97,32 @@ func GetTmpPath() string {
 }
 
 // config file path
-func GetConfigPath() string {
-	var path string
+func GetConfigPath() (path string) {
 	if IsWindows() {
-		path = filepath.Join(GetAppPath(), "conf/npc.conf")
+		path = "conf/npc.conf"
+		if SysTool.FileExisted(path) {
+			return
+		} else if path = filepath.Join(GetAppPath(), "conf/npc.conf"); SysTool.FileExisted(path) {
+			return
+		} else {
+			slog.Error("加载配置文件失败，请检查", "配置文件状态", "不存在")
+			os.Exit(0)
+		}
 	} else {
 		path = "conf/npc.conf"
+		if SysTool.FileExisted(path) {
+			return
+		} else if path = "/etc/nps/conf/npc.conf"; SysTool.FileExisted(path) {
+			return
+		} else if path = "~/.xnps/npc.conf"; SysTool.FileExisted(path) {
+			return
+		} else {
+
+		}
 		_, err := os.Lstat(path)
 		if err != nil {
 			path = "/etc/nps/conf/npc.conf"
 		}
 	}
-	return path
+	return
 }

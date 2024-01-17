@@ -1,11 +1,9 @@
 package main
 
 import (
-	"context"
 	"flag"
-	"github.com/astaxie/beego/logs"
 	"github.com/kardianos/service"
-	"log"
+	"gopkg.in/natefinch/lumberjack.v2"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -15,6 +13,7 @@ import (
 	"time"
 	"xnps/client"
 	"xnps/database/models"
+	"xnps/lib/SysTool"
 	"xnps/lib/common"
 	"xnps/lib/config"
 	"xnps/lib/install"
@@ -28,39 +27,55 @@ var (
 	verifyKey      = flag.String("vkey", "", "Authentication key")
 	connType       = flag.String("type", "tcp", "Connection type with the server（kcp|tcp）")
 	proxyUrl       = flag.String("proxy", "", "proxy socks5 url(eg:socks5://111:222@127.0.0.1:9007)")
-	logLevel       = flag.String("log_level", "7", "log level 0~7")
-	registerTime   = flag.Int("time", 2, "register time long /h")
 	localPort      = flag.Int("local_port", 2000, "p2p local port")
 	password       = flag.String("password", "", "p2p password flag")
 	target         = flag.String("target", "", "p2p target")
 	localType      = flag.String("local_type", "p2p", "p2p target")
 	logPath        = flag.String("log_path", "", "npc log path")
-	debug          = flag.Bool("debug", true, "npc debug")
 	pprofAddr      = flag.String("pprof", "", "PProf debug addr (ip:port)")
 	ver            = flag.Bool("version", false, "show current version")
 	disconnectTime = flag.Int("disconnect_timeout", 60, "not receiving check packet times, until timeout will disconnect the client")
 )
 
 func main() {
+	if *logPath == "" {
+		*logPath = "./log/sunrun.log"
+		if !SysTool.DirExisted("./log") {
+			SysTool.CreateFolder("./log")
+		}
+	}
+
+	r := &lumberjack.Logger{
+		Filename:   *logPath,
+		LocalTime:  true,
+		MaxSize:    20,
+		MaxAge:     7,
+		MaxBackups: 7,
+		Compress:   true,
+	}
+	logger := slog.New(slog.NewJSONHandler(r, nil))
+	slog.SetDefault(logger)
+
 	flag.Parse()
-	logs.Reset()
-	logs.EnableFuncCallDepth(true)
-	logs.SetLogFuncCallDepth(3)
+
+	//logs.Reset()
+	//logs.EnableFuncCallDepth(true)
+	//logs.SetLogFuncCallDepth(3)
 	if *ver {
 		common.PrintVersion()
 		return
 	}
-	if *logPath == "" {
-		*logPath = common.GetNpcLogPath()
-	}
-	if common.IsWindows() {
-		*logPath = strings.Replace(*logPath, "\\", "\\\\", -1)
-	}
-	if *debug {
-		logs.SetLogger(logs.AdapterConsole, `{"level":`+*logLevel+`,"color":true}`)
-	} else {
-		logs.SetLogger(logs.AdapterFile, `{"level":`+*logLevel+`,"filename":"`+*logPath+`","daily":false,"maxlines":100000,"color":true}`)
-	}
+	//if *logPath == "" {
+	//	*logPath = common.GetNpcLogPath()
+	//}
+	//if common.IsWindows() {
+	//	*logPath = strings.Replace(*logPath, "\\", "\\\\", -1)
+	//}
+	//if *debug {
+	//	logs.SetLogger(logs.AdapterConsole, `{"level":`+*logLevel+`,"color":true}`)
+	//} else {
+	//	logs.SetLogger(logs.AdapterFile, `{"level":`+*logLevel+`,"filename":"`+*logPath+`","daily":false,"maxlines":100000,"color":true}`)
+	//}
 
 	// init service
 	options := make(service.KeyValue)
@@ -106,8 +121,7 @@ func main() {
 			if len(os.Args) > 2 {
 				path := strings.Replace(os.Args[2], "-config=", "", -1)
 				if len(path) < 3 {
-					slog.Error("npc.go", context.Background())
-					log.Println("文件不存在", path)
+					slog.Error("配置文件不存在", "path", path)
 				}
 				client.GetTaskStatus(path)
 			}
@@ -130,7 +144,7 @@ func main() {
 		case "start", "stop", "restart":
 			// support busyBox and sysV, for openWrt
 			if service.Platform() == "unix-systemv" {
-				logs.Info("unix-systemv service")
+				slog.Info("unix-systemv service")
 
 				if err = exec.Command("/etc/init.d/"+svcConfig.Name, os.Args[1]).Run(); err != nil {
 					slog.Error("npc.go", "service"+os.Args[1]+" err", err)
@@ -151,7 +165,7 @@ func main() {
 				slog.Error("npc.go", "service"+os.Args[1]+" err", err)
 			}
 			if service.Platform() == "unix-systemv" {
-				logs.Info("unix-systemv service")
+				slog.Info("unix-systemv service")
 				confPath := "/etc/init.d/" + svcConfig.Name
 				os.Symlink(confPath, "/etc/rc.d/S90"+svcConfig.Name)
 				os.Symlink(confPath, "/etc/rc.d/K02"+svcConfig.Name)
@@ -197,13 +211,13 @@ func (p *npc) run() error {
 			const size = 64 << 10
 			buf := make([]byte, size)
 			buf = buf[:runtime.Stack(buf, false)]
-			logs.Warning("npc: panic serving %v: %v\n%s", err, string(buf))
+			slog.Warn("npc: panic serving ", err, string(buf))
 		}
 	}()
 	run()
 	select {
 	case <-p.exit:
-		logs.Warning("stop...")
+		slog.Warn("stop...")
 	}
 	return nil
 }
@@ -234,13 +248,13 @@ func run() {
 	if *verifyKey == "" {
 		*verifyKey, _ = env["NPC_SERVER_VKEY"]
 	}
-	logs.Info("the version of client is %s, the core version of client is %s", version.VERSION, version.GetCoreVersion())
+	slog.Info("version info", "client version", version.VERSION, "core version", version.GetCoreVersion())
 	if *verifyKey != "" && *serverAddr != "" && *configPath == "" {
 		//main
 		go func() {
 			for {
 				client.NewRPClient(*serverAddr, *verifyKey, *connType, *proxyUrl, nil, *disconnectTime).Start()
-				logs.Info("Client closed! It will be reconnected in 5 seconds")
+				slog.Info("Client closed! It will be reconnected in 5 seconds")
 				time.Sleep(time.Second * 5)
 			}
 		}()

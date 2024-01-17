@@ -1,7 +1,7 @@
 package models
 
 import (
-	"github.com/pkg/errors"
+	"errors"
 	"strings"
 	"sync"
 	"sync/atomic"

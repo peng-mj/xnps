@@ -5,6 +5,7 @@ package pmux
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"io"
 	"net"
 	"os"
@@ -13,7 +14,6 @@ import (
 	"time"
 
 	"github.com/astaxie/beego/logs"
-	"github.com/pkg/errors"
 	"xnps/lib/common"
 )
 

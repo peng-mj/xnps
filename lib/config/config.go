@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
-	"xnps/database/Mapper"
 	"xnps/database/models"
 	"xnps/lib/common"
 )
@@ -106,7 +105,8 @@ func getTitleContent(s string) string {
 
 func dealCommon(s string) *CommonConfig {
 	c := &CommonConfig{}
-	c.Client = Mapper.NewClient("")
+	//c.Client = Mapper.NewClient("")
+	c.Client = new(models.Client)
 	//c.Client.Cnf = new(models.Config)
 	for _, v := range splitStr(s) {
 		item := strings.Split(v, "=")
@@ -174,37 +174,11 @@ func dealTunnel(s string) *models.Tunnel {
 			t.LocalPath = item[1]
 		case "strip_pre":
 			t.StripPre = item[1]
-			//case "multi_account":
-			//	t.MultiAccount = &file.MultiAccount{}
-			//	if common.FileExists(item[1]) {
-			//		if b, err := common.ReadAllFromFile(item[1]); err != nil {
-			//			panic(err)
-			//		} else {
-			//			if content, err := common.ParseStr(string(b)); err != nil {
-			//				panic(err)
-			//			} else {
-			//				t.MultiAccount.AccountMap = dealMultiUser(content)
-			//			}
-			//		}
-			//	}
+
 		}
 	}
 	return t
 
-}
-
-func dealMultiUser(s string) map[string]string {
-	multiUserMap := make(map[string]string)
-	for _, v := range splitStr(s) {
-		item := strings.Split(v, "=")
-		if len(item) == 0 {
-			continue
-		} else if len(item) == 1 {
-			item = append(item, "")
-		}
-		multiUserMap[strings.TrimSpace(item[0])] = item[1]
-	}
-	return multiUserMap
 }
 
 func delLocalService(s string) *LocalServer {
@@ -232,7 +206,7 @@ func delLocalService(s string) *LocalServer {
 
 func getAllTitle(content string) (arr []string, err error) {
 	var re *regexp.Regexp
-	re, err = regexp.Compile(`(?m)^\[[^\[\]\r\n]+\]`)
+	re, err = regexp.Compile(`(?m)^\[[^\[\]\r\n]+]`)
 	if err != nil {
 		return
 	}

@@ -5,7 +5,6 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"sync"
-	"xnps/WebServer/WebApi"
 	"xnps/lib/cache"
 )
 
@@ -22,21 +21,6 @@ type WebServer struct {
 
 // 初始化系统时，运行的web段配置
 func InitSystem(wg *sync.WaitGroup, url string) {
-	w := new(echo.Echo)
-	w = echo.New()
-	//装载静态文件
-	w.Static("/", "web/static/")
-	//w.e.Static("/", staticFiles.ReadDir())
-	w.Use(middleware.BodyLimit("2M"))
-	w.Use(middleware.CORS()) //NOTE:如果跨域，需要特别注意
-	w.POST("/initSystem", func(c echo.Context) error {
-		err := WebApi.AddSysConfig(c)
-		if err == nil {
-			wg.Done()
-		}
-		return err
-	})
-	w.Logger.Fatal(w.Start(url))
 
 }
 
