@@ -14,7 +14,6 @@ import (
 	"xnps/database/models"
 	"xnps/lib/nps_mux"
 
-	"github.com/astaxie/beego/logs"
 	"xnps/lib/common"
 	"xnps/lib/conn"
 	"xnps/lib/crypt"
@@ -71,7 +70,7 @@ func NewTunnel(tunnelPort int, tunnelType string, ipVerify bool, runList sync.Ma
 func (s *Bridge) StartTunnel() error {
 	go s.ping()
 	if s.tunnelType == "kcp" {
-		logs.Info("server start, the bridge type is %s, the bridge port is %d", s.tunnelType, s.TunnelPort)
+		slog.Info("server start, the bridge type is %s, the bridge port is %d", s.tunnelType, s.TunnelPort)
 		//return conn.NewKcpListenerAndProcess(beego.AppConfig.String("bridge_ip")+":"+beego.AppConfig.String("bridge_port"), func(c net.Conn) {
 		//	s.clientProcess(conn.NewConn(c))
 		//})
@@ -79,7 +78,7 @@ func (s *Bridge) StartTunnel() error {
 	} else {
 		listener, err := connection.GetBridgeListener(s.tunnelType)
 		if err != nil {
-			logs.Error(err)
+			slog.Error("GetBridgeListener ", "error", err)
 			os.Exit(0)
 			return err
 		}
@@ -105,12 +104,12 @@ func (s *Bridge) verifySuccess(c *conn.Conn) {
 func (s *Bridge) clientProcess(c *conn.Conn) {
 	//read test flag
 	if _, err := c.GetShortContent(3); err != nil {
-		logs.Info("The client %s connect error", c.Conn.RemoteAddr(), err.Error())
+		slog.Info("The client %s connect error", c.Conn.RemoteAddr(), err.Error())
 		return
 	}
 	//version check
 	if b, err := c.GetShortLenContent(); err != nil || string(b) != version.GetCoreVersion() {
-		logs.Info("The client %s version does not match", c.Conn.RemoteAddr())
+		slog.Info("The client %s version does not match", c.Conn.RemoteAddr())
 		c.Close()
 		return
 	}
@@ -118,7 +117,7 @@ func (s *Bridge) clientProcess(c *conn.Conn) {
 	var ver []byte
 	var err error
 	if ver, err = c.GetShortLenContent(); err != nil {
-		logs.Info("get client %s version error", err.Error())
+		slog.Info("get client %s version error", err.Error())
 		c.Close()
 		return
 	}
@@ -138,7 +137,7 @@ func (s *Bridge) clientProcess(c *conn.Conn) {
 	//id, err := Mapper.GetDb().GetClientByAccessUser(string(buf), c.Conn.RemoteAddr().String())
 	client, err := Mapper.GetDb().GetClientByAccessUser(string(buf), string(buf))
 	if err != nil {
-		logs.Info("Current client connection validation error, close this client:", c.Conn.RemoteAddr())
+		slog.Info("Current client connection validation error, close this client:", c.Conn.RemoteAddr())
 		s.verifyError(c)
 		return
 	} else {
@@ -147,7 +146,7 @@ func (s *Bridge) clientProcess(c *conn.Conn) {
 	if flag, err := c.ReadFlag(); err == nil {
 		s.typeDeal(flag, c, client.Id, string(ver))
 	} else {
-		logs.Warn(err, flag)
+		slog.Warn("read flag", err, flag)
 	}
 	return
 }
@@ -215,7 +214,7 @@ func (s *Bridge) typeDeal(typeVal string, conn *conn.Conn, id int64, ver string)
 	//	if passwdBytes, err := conn.GetShortContent(40); err == nil {
 	//		s.SecretChan <- conn.NewSecret(string(passwdBytes), conn)
 	//	} else {
-	//		logs.Error("secret error, failed to match the key successfully")
+	//		slog.Error("secret error, failed to match the key successfully")
 	//	}
 	case common.WORK_FILE:
 		muxConn := nps_mux.NewMux(conn.Conn, s.tunnelType, s.disconnectTime)
@@ -274,7 +273,7 @@ func (s *Bridge) SendLinkInfo(clientId int64, link *conn.Link, t *models.Tunnel)
 			return
 		}
 		if _, err = conn.NewConn(targetConn).SendInfo(link, ""); err != nil {
-			logs.Info("new connect error ,the targetConn %s refuse to connect", link.Host)
+			slog.Info("new connect error ,the targetConn %s refuse to connect", link.Host)
 			return
 		}
 	} else {
@@ -305,7 +304,7 @@ func (s *Bridge) ping() {
 				return true
 			})
 			for _, v := range arr {
-				logs.Info("the client %d closed", v)
+				slog.Info("the client %d closed", v)
 				s.DelClient(v)
 			}
 		}
@@ -366,11 +365,11 @@ loop:
 				break loop
 			} else {
 				ports := common.GetPorts(tun.Ports)
-				//logs.Info(ports)
+				//slog.Info(ports)
 				if len(ports) == 0 {
 					break loop
 				}
-				logs.Info(tun.Target.TargetStr)
+				slog.Info(tun.Target.TargetStr)
 				targets := common.GetPorts(tun.Target.TargetStr)
 				if len(ports) > 1 && (tun.Mode == "tcp" || tun.Mode == "udp") && (len(ports) != len(targets)) {
 					fail = true
@@ -414,7 +413,7 @@ loop:
 					//检查某客户端是否有存在的通道
 					if !Mapper.GetDb().HasTunnel(client.Id, tunnel) {
 						if err := Mapper.GetDb().NewTunnel(tunnel); err != nil {
-							logs.Notice("Add task error ", err.Error())
+							slog.Warn("Add task error ", err.Error())
 							fail = true
 							c.WriteAddFail()
 							break loop

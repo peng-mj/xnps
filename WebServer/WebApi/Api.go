@@ -12,6 +12,10 @@ type ReObj struct {
 	Data   interface{} `json:"Data"`
 }
 
+func (r *ReObj) Error() string {
+	return ""
+}
+
 func ReDara(err error, data interface{}) string {
 	ReData := ReObj{}
 	if err != nil {
@@ -28,6 +32,17 @@ func ReDara(err error, data interface{}) string {
 		slog.Error(err.Error())
 	}
 	return `{"status":ERROR","data":"Unexpected bugs, please file an issue with our github"}`
+}
+func Replay(err error, data interface{}) (ReData ReObj) {
+	if err != nil {
+		ReData.Status = "ERROR"
+		ReData.Data = err.Error()
+	} else {
+		ReData.Status = "OK"
+		ReData.Data = data
+	}
+	return
+	//return `{"status":ERROR","data":"Unexpected bugs, please file an issue with our github"}`
 }
 
 func GetSystemStatus(c echo.Context) (err error) {

@@ -1,12 +1,11 @@
 package WebServer
 
 import (
-	"encoding/json"
 	"errors"
+	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
 	"golang.org/x/exp/slog"
-	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -60,46 +59,43 @@ func (w *WebServer) generateToken(username, uuid, passwd string, timeoutHour int
 }
 
 // Login 登录信息
-func (w *WebServer) Login(c echo.Context) (err error) {
-	login := new(WebObj.Login)
+func (w *WebServer) Login(c *gin.Context) {
+	var login WebObj.Login
 	var token string
-	body, err := io.ReadAll(c.Request().Body)
-	if err == nil {
-		if err = json.Unmarshal(body, login); err == nil {
-			if Salt, ok := w.salt.GetString(login.Username); ok {
-				slog.Info("salt=", Salt)
-				var passwd string
-				if passwd, err = Mapper.GetDb().GetPasswdByUser(login.Username); err == nil {
-					//验证加密后的密码是否正确
-					if passwd = crypt.Sha256(Salt + "@" + passwd); login.Password != passwd {
-						err = errors.New("username or password error")
-					} else {
-						salt := crypt.GetUlid()
-						token = w.generateToken(login.Username, salt, passwd, 1)
-						w.secret.Add(salt, passwd)
-						w.salt.Remove(login.Username)
-					}
+	var err error
+
+	if err = c.ShouldBindJSON(&login); err == nil {
+		if Salt, ok := w.salt.GetString(login.Username); ok {
+			slog.Info("salt=", Salt)
+			var passwd string
+			if passwd, err = Mapper.GetDb().GetPasswdByUser(login.Username); err == nil {
+				//验证加密后的密码是否正确
+				if passwd = crypt.Sha256(Salt + "@" + passwd); login.Password != passwd {
+					err = errors.New("username or password error")
+				} else {
+					salt := crypt.GetUlid()
+					token = w.generateToken(login.Username, salt, passwd, 1)
+					w.secret.Add(salt, passwd)
+					w.salt.Remove(login.Username)
 				}
-			} else {
-				err = echo.ErrUnauthorized
 			}
+		} else {
+			err = echo.ErrUnauthorized
 		}
 	}
-	return c.String(http.StatusOK, WebApi.ReDara(err, token))
+	c.JSON(http.StatusOK, WebApi.Replay(err, token))
 }
 
 // DoLogin 用于登录前准备，当用户登录时，将Salt和密码的sha256进行组合后再sha256编码，再传回服务器，避免中间者拦截密码的sha256
-func (w *WebServer) DoLogin(c echo.Context) (err error) {
-	body, err := io.ReadAll(c.Request().Body)
-	doLogin := new(WebObj.DoLogin)
+func (w *WebServer) DoLogin(c *gin.Context) {
+	var doLogin WebObj.DoLogin
 	var Salt string
-	if err == nil {
-		if err = json.Unmarshal(body, &doLogin); err == nil {
-			if Mapper.GetDb().CheckUserName(doLogin.Username) {
-				Salt = crypt.GenerateRandomVKey()
-				w.salt.Add(doLogin.Username, Salt)
-			}
+	var err error
+	if err = c.ShouldBindJSON(&doLogin); err == nil {
+		if Mapper.GetDb().CheckUserName(doLogin.Username) {
+			Salt = crypt.GenerateRandomVKey()
+			w.salt.Add(doLogin.Username, Salt)
 		}
 	}
-	return c.String(http.StatusOK, WebApi.ReDara(err, Salt))
+	c.JSON(http.StatusOK, WebApi.Replay(err, Salt))
 }

@@ -25,10 +25,10 @@ func (s *DbUtils) GetAllTunnelList(status int) ([]models.Tunnel, int) {
 	db.Find(&cli)
 	return cli, len(cli)
 }
-func (s *DbUtils) GetAllTunnelNumById(id int64) int {
+func (s *DbUtils) GetAllTunnelNumById(id int64) uint32 {
 	var num int64
 	s.GDb.Model(models.Tunnel{}).Where("id = ?", id).Count(&num)
-	return int(num)
+	return uint32(num)
 }
 
 func (s *DbUtils) NewTunnel(tunnel *models.Tunnel) (err error) {

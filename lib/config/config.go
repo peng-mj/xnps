@@ -131,9 +131,9 @@ func dealCommon(s string) *CommonConfig {
 		case "proxy_url":
 			c.ProxyUrl = item[1]
 		case "rate_limit":
-			c.Client.RateLimit = common.GetIntNoErrByStr(item[1])
+			c.Client.RateLimit = uint32(common.GetIntNoErrByStr(item[1]))
 		case "max_conn":
-			c.Client.MaxConn = common.GetIntNoErrByStr(item[1])
+			c.Client.MaxConn = uint32(common.GetIntNoErrByStr(item[1]))
 		case "remark":
 			c.Client.Name = item[1]
 		case "pprof_addr":

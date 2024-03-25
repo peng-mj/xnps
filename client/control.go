@@ -19,7 +19,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/astaxie/beego/logs"
 	"github.com/xtaci/kcp-go"
 	"golang.org/x/net/proxy"
 	"xnps/lib/common"
@@ -119,18 +118,17 @@ re:
 		// send global configuration to server and get status of config setting
 		//从配置文件中启动
 		if _, err = c.SendInfo(cnf.CommonConfig.Client, common.NEW_CONF); err != nil {
-			logs.Error(err)
 			slog.Error(pkName, "send configuration info err", err)
 
 			goto re
 		}
 		if !c.GetAddStatus() {
-			logs.Error("the web_user may have been occupied!")
+			slog.Error("the web_user may have been occupied!")
 			goto re
 		}
 
 		if b, err = c.GetShortContent(16); err != nil {
-			logs.Error(err)
+			slog.Error(err.Error())
 			goto re
 		}
 		vkey = string(b)
@@ -141,11 +139,11 @@ re:
 	//send hosts to server
 	//for _, v := range cnf.Hosts {
 	//	if _, err := c.SendInfo(v, common.NEW_HOST); err != nil {
-	//		logs.Error(err)
+	//		slog.Error(err)
 	//		goto re
 	//	}
 	//	if !c.GetAddStatus() {
-	//		logs.Error(errAdd, v.Host)
+	//		slog.Error(errAdd, v.Host)
 	//		goto re
 	//	}
 	//}
@@ -153,11 +151,11 @@ re:
 	//send  task to server
 	for _, v := range cnf.Tasks {
 		if _, err = c.SendInfo(v, common.NEW_TASK); err != nil {
-			logs.Error(err)
+			slog.Error(err.Error())
 			goto re
 		}
 		if !c.GetAddStatus() {
-			logs.Error(errAdd, v.Ports, v.Remark)
+			slog.Error("添加错误", errAdd, v.Ports, v.Remark)
 			goto re
 		}
 		//if v.Mode == "file" {
@@ -238,7 +236,7 @@ func NewConn(bridgeType string, vkey string, serverIp string, connType string, p
 	//因为使用了sha1加密，所以，长度从32修改为40
 	b, err := c.GetShortContent(40)
 	if err != nil {
-		logs.Error(err)
+		slog.Error(err.Error())
 		return nil, err
 	}
 	if crypt.Sha1(version.GetCoreVersion()) != string(b) {
@@ -301,7 +299,7 @@ func basicAuth(username, password string) string {
 func getRemoteAddressFromServer(rAddr string, localConn *net.UDPConn, md5Password, role string, add int) error {
 	rAddr, err := getNextAddr(rAddr, add)
 	if err != nil {
-		logs.Error(err)
+		slog.Error(err.Error())
 		return err
 	}
 	addr, err := net.ResolveUDPAddr("udp", rAddr)
@@ -321,17 +319,17 @@ func handleP2PUdp(localAddr, rAddr, md5Password, role string) (remoteAddress str
 	}
 	err = getRemoteAddressFromServer(rAddr, localConn, md5Password, role, 0)
 	if err != nil {
-		logs.Error(err)
+		slog.Error(err.Error())
 		return
 	}
 	err = getRemoteAddressFromServer(rAddr, localConn, md5Password, role, 1)
 	if err != nil {
-		logs.Error(err)
+		slog.Error(err.Error())
 		return
 	}
 	err = getRemoteAddressFromServer(rAddr, localConn, md5Password, role, 2)
 	if err != nil {
-		logs.Error(err)
+		slog.Error(err.Error())
 		return
 	}
 	var remoteAddr1, remoteAddr2, remoteAddr3 string
@@ -364,7 +362,7 @@ func handleP2PUdp(localAddr, rAddr, md5Password, role string) (remoteAddress str
 }
 
 func sendP2PTestMsg(localConn *net.UDPConn, remoteAddr1, remoteAddr2, remoteAddr3 string) (string, error) {
-	logs.Trace(remoteAddr3, remoteAddr2, remoteAddr1)
+	slog.Info(remoteAddr3, remoteAddr2, remoteAddr1)
 	defer localConn.Close()
 	isClose := false
 	defer func() { isClose = true }()
@@ -381,7 +379,7 @@ func sendP2PTestMsg(localConn *net.UDPConn, remoteAddr1, remoteAddr2, remoteAddr
 		if err != nil {
 			return
 		}
-		logs.Trace("try send test packet to target %s", addr)
+		slog.Info("try send test packet to target %s", addr)
 		ticker := time.NewTicker(time.Millisecond * 500)
 		defer ticker.Stop()
 		for {
@@ -403,7 +401,7 @@ func sendP2PTestMsg(localConn *net.UDPConn, remoteAddr1, remoteAddr2, remoteAddr
 			for i := 0; i <= 50; i++ {
 				go func(port int) {
 					trueAddress := ip + ":" + strconv.Itoa(port)
-					logs.Trace("try send test packet to target %s", trueAddress)
+					slog.Info("try send test packet to target %s", trueAddress)
 					remoteUdpAddr, err := net.ResolveUDPAddr("udp", trueAddress)
 					if err != nil {
 						return
@@ -445,12 +443,12 @@ func sendP2PTestMsg(localConn *net.UDPConn, remoteAddr1, remoteAddr2, remoteAddr
 			}
 			return addr.String(), nil
 		case common.WORK_P2P_END:
-			logs.Trace("Remotely Address %s Reply Packet Successfully Received", addr.String())
+			slog.Info("Remotely Address %s Reply Packet Successfully Received", addr.String())
 			return addr.String(), nil
 		case common.WORK_P2P_CONNECT:
 			go func() {
 				for i := 20; i > 0; i-- {
-					logs.Trace("try send receive success packet to target %s", addr.String())
+					slog.Info("try send receive success packet to target %s", addr.String())
 					if _, err = localConn.WriteTo([]byte(common.WORK_P2P_SUCCESS), addr); err != nil {
 						return
 					}
