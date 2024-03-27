@@ -15,10 +15,9 @@ import (
 	"xnps/lib/daemon"
 	"xnps/lib/install"
 	"xnps/lib/version"
-	"xnps/server"
-	"xnps/server/connection"
-	"xnps/server/tool"
-	"xnps/web/routers"
+	"xnps/netManager/server"
+	"xnps/netManager/server/connection"
+	"xnps/netManager/server/tool"
 
 	"github.com/astaxie/beego"
 	"xnps/lib/common"
@@ -215,7 +214,6 @@ func (p *nps) run() error {
 }
 
 func run() {
-	routers.Init()
 	task := &models.Tunnel{
 		Mode: "webServer",
 	}
