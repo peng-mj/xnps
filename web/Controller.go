@@ -1,8 +1,8 @@
-package WebServer
+package web
 
 import (
 	"github.com/golang-jwt/jwt"
-	"xnps/WebServer/WebApi"
+	"xnps/web/WebApi"
 )
 
 type jwtCustomClaims struct {
@@ -12,9 +12,9 @@ type jwtCustomClaims struct {
 }
 
 func (w *WebServer) ApiRouterRules(pre string) {
-	r := w.e.Group(pre)
-	r = w.e.Group("/api")
-	r.Use(w.jwtMiddleware)
+	r := w.g.Group(pre)
+	r = w.g.Group("/api")
+	r.Use(w.jwtMiddleware())
 	//分组管理
 	r.POST("/group/get/all", WebApi.GetAllGroup)
 	r.POST("/group/get/condition", WebApi.GetGroupByCondition)
@@ -33,12 +33,6 @@ func (w *WebServer) ApiRouterRules(pre string) {
 	r.POST("/tunnel/add/condition", WebApi.AddTunnel)
 	r.POST("/tunnel/update/one", WebApi.EditTunnel)
 	r.POST("/tunnel/delete/one", WebApi.DelTunnel)
-	//防火墙
-	r.POST("/firewall/get/all", WebApi.GetAllFirewall)
-	r.POST("/firewall/get/condition", WebApi.GetGroupByFirewall) //这个需要弄清楚
-	r.POST("/firewall/add/condition", WebApi.AddFirewall)
-	r.POST("/firewall/update/one", WebApi.EditFirewall)
-	r.POST("/firewall/delete/one", WebApi.DelFirewall)
 	//黑名单相关
 	r.POST("/block/get/all", WebApi.GetAllBlockList)
 	r.POST("/block/get/condition", WebApi.GetBlockListByCondition)
