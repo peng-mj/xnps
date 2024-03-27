@@ -13,13 +13,13 @@ import (
 	"xnps/database/Mapper"
 	"xnps/database/models"
 	"xnps/lib/nps_mux"
+	"xnps/netManager/server/connection"
+	"xnps/netManager/server/tool"
 
 	"xnps/lib/common"
 	"xnps/lib/conn"
 	"xnps/lib/crypt"
 	"xnps/lib/version"
-	"xnps/server/connection"
-	"xnps/server/tool"
 )
 
 type Client struct {

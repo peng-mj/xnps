@@ -7,10 +7,10 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"xnps/bridge"
 	"xnps/database/models"
 	"xnps/lib/common"
 	"xnps/lib/conn"
+	"xnps/netManager/bridge"
 )
 
 type UdpModeServer struct {
@@ -32,7 +32,7 @@ func (s *UdpModeServer) Start() error {
 	if s.tunnel.ServerIp == "" {
 		s.tunnel.ServerIp = "0.0.0.0"
 	}
-	s.listener, err = net.ListenUDP("udp", &net.UDPAddr{net.ParseIP(s.tunnel.ServerIp), s.tunnel.ServerPort, ""})
+	s.listener, err = net.ListenUDP("udp", &net.UDPAddr{net.ParseIP(s.tunnel.ServerIp), int(s.tunnel.ServerPort), ""})
 	if err != nil {
 		return err
 	}
@@ -67,7 +67,8 @@ func (s *UdpModeServer) process(addr *net.UDPAddr, data []byte) {
 				logs.Warn(err)
 				return
 			}
-			s.tunnel.Client.Flow.Add(int64(len(data)), int64(len(data)))
+			//流量记录
+			//s.tunnel.Client.Flow.Add(int64(len(data)), int64(len(data)))
 		}
 	} else {
 		if err := s.CheckFlowAndConnNum(s.tunnel.Client); err != nil {
@@ -91,8 +92,8 @@ func (s *UdpModeServer) process(addr *net.UDPAddr, data []byte) {
 
 			buf := common.BufPoolUdp.Get().([]byte)
 			defer common.BufPoolUdp.Put(buf)
-
-			s.tunnel.Client.Flow.Add(int64(len(data)), int64(len(data)))
+			//流量记录
+			//s.tunnel.Client.Flow.Add(int64(len(data)), int64(len(data)))
 			for {
 				clientConn.SetReadDeadline(time.Now().Add(time.Minute * 10))
 				if n, err := target.Read(buf); err != nil {
@@ -105,7 +106,9 @@ func (s *UdpModeServer) process(addr *net.UDPAddr, data []byte) {
 						logs.Warn(err)
 						return
 					}
-					s.tunnel.Client.Flow.Add(int64(n), int64(n))
+					//流量记录
+
+					//s.tunnel.Client.Flow.Add(int64(n), int64(n))
 				}
 				if err := s.CheckFlowAndConnNum(s.tunnel.Client); err != nil {
 					logs.Warn("client id %d, tunnel id %d,error %s, when udp connection", s.tunnel.Client.Id, s.tunnel.Id, err.Error())

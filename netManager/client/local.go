@@ -1,13 +1,10 @@
 package client
 
 import (
-	"errors"
 	"net"
 	"net/http"
-	"runtime"
 	"sync"
 	"time"
-	"xnps/database/models"
 	"xnps/lib/nps_mux"
 
 	"github.com/astaxie/beego/logs"
@@ -19,38 +16,39 @@ import (
 )
 
 var (
-	LocalServer   []*net.TCPListener
-	udpConn       net.Conn
-	muxSession    *nps_mux.Mux
-	fileServer    []*http.Server
-	p2pNetBridge  *p2pBridge
+	LocalServer []*net.TCPListener
+	udpConn     net.Conn
+	muxSession  *nps_mux.Mux
+	fileServer  []*http.Server
+	//p2pNetBridge  *p2pBridge
 	lock          sync.RWMutex
 	udpConnStatus bool
 )
 
-type p2pBridge struct {
-}
-
-func (p2pBridge *p2pBridge) SendLinkInfo(clientId int64, link *conn.Link, t *models.Tunnel) (target net.Conn, err error) {
-	for i := 0; muxSession == nil; i++ {
-		if i >= 20 {
-			err = errors.New("p2pBridge:too many times to get muxSession")
-			logs.Error(err)
-			return
-		}
-		runtime.Gosched() // waiting for another goroutine establish the mux connection
-	}
-	nowConn, err := muxSession.NewConn()
-	if err != nil {
-		udpConn = nil
-		return nil, err
-	}
-	if _, err := conn.NewConn(nowConn).SendInfo(link, ""); err != nil {
-		udpConnStatus = false
-		return nil, err
-	}
-	return nowConn, nil
-}
+//
+//type p2pBridge struct {
+//}
+//
+//func (p2pBridge *p2pBridge) SendLinkInfo(clientId int64, link *conn.Link, t *models.Tunnel) (target net.Conn, err error) {
+//	for i := 0; muxSession == nil; i++ {
+//		if i >= 20 {
+//			err = errors.New("p2pBridge:too many times to get muxSession")
+//			logs.Error(err)
+//			return
+//		}
+//		runtime.Gosched() // waiting for another goroutine establish the mux connection
+//	}
+//	nowConn, err := muxSession.NewConn()
+//	if err != nil {
+//		udpConn = nil
+//		return nil, err
+//	}
+//	if _, err := conn.NewConn(nowConn).SendInfo(link, ""); err != nil {
+//		udpConnStatus = false
+//		return nil, err
+//	}
+//	return nowConn, nil
+//}
 
 func CloseLocalServer() {
 	for _, v := range LocalServer {
@@ -206,5 +204,5 @@ func newUdpConn(localAddr string, config *config.CommonConfig, l *config.LocalSe
 	conn.SetUdpSession(udpTunnel)
 	udpConn = udpTunnel
 	muxSession = nps_mux.NewMux(udpConn, "kcp", config.DisconnectTime)
-	p2pNetBridge = &p2pBridge{}
+	//p2pNetBridge = &p2pBridge{}
 }

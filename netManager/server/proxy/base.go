@@ -7,10 +7,10 @@ import (
 	"net/http"
 	"sort"
 	"sync"
-	"xnps/bridge"
 	"xnps/database/models"
 	"xnps/lib/common"
 	"xnps/lib/conn"
+	"xnps/netManager/bridge"
 )
 
 type Service interface {

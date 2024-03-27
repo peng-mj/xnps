@@ -8,11 +8,11 @@ import (
 	"net/http"
 	"path/filepath"
 	"strconv"
-	"xnps/bridge"
 	"xnps/database/models"
 	"xnps/lib/common"
 	"xnps/lib/conn"
-	"xnps/server/connection"
+	"xnps/netManager/bridge"
+	"xnps/netManager/server/connection"
 )
 
 type TunnelModeServer struct {
@@ -64,7 +64,7 @@ func (s *WebServer) Start() error {
 	beego.BConfig.WebConfig.Session.SessionOn = true
 	beego.SetStaticPath(beego.AppConfig.String("web_base_url")+"/static", filepath.Join(common.GetRunPath(), "web", "static"))
 	beego.SetViewsPath(filepath.Join(common.GetRunPath(), "web", "views"))
-	err := errors.New("Web management startup failure ")
+	err := errors.New("web management startup failure ")
 	var l net.Listener
 	if l, err = connection.GetWebManagerListener(); err == nil {
 		beego.InitBeforeHTTPRun()
