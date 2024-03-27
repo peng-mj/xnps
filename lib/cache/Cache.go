@@ -3,12 +3,14 @@ package cache
 import (
 	"errors"
 	"fmt"
+	"sync"
 )
 
 type KVManage struct {
 	ValueMap map[string]string
 	Keys     []string
 	maxLen   int
+	lk       sync.Map
 }
 
 func NewKVMap(maxLen int) *KVManage {
