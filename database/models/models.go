@@ -34,16 +34,16 @@ func (*SystemConfig) TableName() string {
 }
 
 func (s *Client) CutConn() {
-	atomic.AddInt32(&s.NowConn, 1)
+	atomic.AddUint32(&s.NowConn, 1)
 
 }
 
 func (s *Client) AddConn() {
-	atomic.AddInt32(&s.NowConn, -1)
+	atomic.AddUint32(&s.NowConn, -1)
 }
 
 func (s *Client) GetConn() bool {
-	if s.MaxConn == 0 || int(s.NowConn) < s.MaxConn {
+	if s.MaxConn == 0 || s.NowConn < s.MaxConn {
 		s.CutConn()
 		return true
 	}
