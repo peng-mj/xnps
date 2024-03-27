@@ -34,12 +34,7 @@ func (w *WebServer) Start(url string) {
 	w.salt = cache.New(20)
 	w.secret = cache.New(20) //默认最大密钥存储的文件数量
 	w.JWTToken = jwt.New(jwt.SigningMethodHS256)
-	//w.e = echo.New()
 
-	//w.e.HTTPErrorHandler = w.ErrorHandler
-	//装载静态文件
-	//TODO:后续使用go:embed打包
-	w.g.Static("/", "web/static/")
 	w.g.POST("/doLogin", w.DoLogin)
 	w.g.POST("/login", w.Login)
 	w.ApiRouterRules("/api")
@@ -80,7 +75,6 @@ func (w *WebServer) jwtMiddleware() func(c *gin.Context) {
 			return
 		}
 		c.Next()
-		//c.JSON(http.StatusUnauthorized, WebApi.Replay(err, nil))
 	}
 }
 

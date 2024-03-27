@@ -40,6 +40,7 @@ func (s *Client) CutConn() {
 
 func (s *Client) AddConn() {
 	atomic.AddUint32(&s.NowConn, -1)
+
 }
 
 func (s *Client) GetConn() bool {
