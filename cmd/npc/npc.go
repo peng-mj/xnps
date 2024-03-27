@@ -11,13 +11,13 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"xnps/client"
 	"xnps/database/models"
 	"xnps/lib/SysTool"
 	"xnps/lib/common"
 	"xnps/lib/config"
 	"xnps/lib/install"
 	"xnps/lib/version"
+	client2 "xnps/netManager/client"
 )
 
 // 获取输入参数
@@ -123,24 +123,11 @@ func main() {
 				if len(path) < 3 {
 					slog.Error("配置文件不存在", "path", path)
 				}
-				client.GetTaskStatus(path)
+				client2.GetTaskStatus(path)
 			}
-		//case "register": //不允许注册
-		//	flag.CommandLine.Parse(os.Args[2:])
-		//	client.RegisterLocalIp(*serverAddr, *verifyKey, *connType, *proxyUrl, *registerTime)
 		case "update":
 			install.UpdateNpc()
 			return
-		//case "nat":
-		//	c := stun.CreateNewClient()
-		//	c.SetServerAddr(*stunAddr)
-		//	nat, host, err := c.Discover()
-		//	if err != nil || host == nil {
-		//		logs.Error("get nat type error", err)
-		//		return
-		//	}
-		//	fmt.Printf("nat type: %s \npublic address: %s\n", nat.String(), host.String())
-		//	os.Exit(0)
 		case "start", "stop", "restart":
 			// support busyBox and sysV, for openWrt
 			if service.Platform() == "unix-systemv" {
@@ -238,7 +225,7 @@ func run() {
 		localServer.Port = *localPort
 		commonConfig.Client = new(models.Client)
 		//commonConfig.Client.Cnf = new(models.Config)
-		go client.StartLocalServer(localServer, commonConfig)
+		go client2.StartLocalServer(localServer, commonConfig)
 		return
 	}
 	env := common.GetEnvMap()
@@ -253,7 +240,7 @@ func run() {
 		//main
 		go func() {
 			for {
-				client.NewRPClient(*serverAddr, *verifyKey, *connType, *proxyUrl, nil, *disconnectTime).Start()
+				client2.NewRPClient(*serverAddr, *verifyKey, *connType, *proxyUrl, nil, *disconnectTime).Start()
 				slog.Info("Client closed! It will be reconnected in 5 seconds")
 				time.Sleep(time.Second * 5)
 			}
@@ -262,6 +249,6 @@ func run() {
 		if *configPath == "" {
 			*configPath = common.GetConfigPath()
 		}
-		go client.StartFromFile(*configPath)
+		go client2.StartFromFile(*configPath)
 	}
 }

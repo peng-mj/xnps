@@ -117,14 +117,14 @@ web_key_file=conf/server.key
 # if web under proxy use sub path. like http://host/nps need this.
 #web_base_url=/nps
 
-#Web API unauthenticated IP address(the len of auth_crypt_key must be 16)
+#web API unauthenticated IP address(the len of auth_crypt_key must be 16)
 #Remove comments if needed
 #auth_key=test
 auth_crypt_key =sahbicacbaui1bd2bADWDWDAHHUYUiqibdi1ub
 
 allow_ports=9001-9009,10001,11000-12000
 
-#Web management multi-user login
+#web management multi-user login
 allow_user_login=false
 allow_user_register=false
 allow_user_change_username=false

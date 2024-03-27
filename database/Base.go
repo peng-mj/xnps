@@ -26,7 +26,7 @@ func InitDatabase(dbFile string) *Mapper.DbUtils {
 		os.Exit(-1)
 	} else {
 		err := db.GDb.AutoMigrate(
-			models.Client{}, models.Tunnel{}, models.Firewall{}, models.BlockRecode{}, models.Group{}, models.BlockRecode{})
+			models.Client{}, models.Tunnel{}, models.Group{}, models.Blacklist{})
 		if err != nil {
 			logs.Info("创建数据表失败", err)
 		}

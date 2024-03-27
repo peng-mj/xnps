@@ -1,5 +1,5 @@
 
-# nps
+# xnps
 ![](https://img.shields.io/github/stars/peng-mj/xnps.svg)   ![](https://img.shields.io/github/forks/peng-mj/xnps.svg)
 ![GitHub All Releases](https://img.shields.io/github/downloads/peng-mj/xnps/total)
 
