@@ -1,0 +1,15 @@
+[web]
+WebPort = 8091
+Username = "admin"
+Password = "123456"
+OTPKeys = "" #Automatically generated at installation
+
+[databses]
+Type = "sqlite3"
+Path = "./.data/server.sqlite3"
+
+[proxy]
+BrigePort = 8090
+MaxClient = 100
+UsablePort = [[9000,9900],21000]
+

@@ -1,0 +1,15 @@
+.vscode
+.idea
+./nps*
+./npc*
+cmd/web_test
+bin
+TEMP
+*.exe
+*.txt
+*.json
+.idea
+log
+*.bkp
+
+
