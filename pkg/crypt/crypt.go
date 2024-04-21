@@ -9,10 +9,22 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"github.com/bwmarrin/snowflake"
+	"github.com/google/uuid"
 	"github.com/oklog/ulid/v2"
 	"math/rand"
 	"time"
 )
+
+const SnowStartTime = 1700000000000
+
+var entropy *ulid.MonotonicEntropy
+
+func init() {
+	snowflake.Epoch = SnowStartTime
+	entropy = ulid.Monotonic(rand.New(rand.NewSource(time.Now().UnixNano())), 0)
+
+}
 
 // en
 func AesEncrypt(origData, key []byte) ([]byte, error) {
@@ -52,11 +64,11 @@ func PKCS5Padding(ciphertext []byte, blockSize int) []byte {
 // Remove excess
 func PKCS5UnPadding(origData []byte) (error, []byte) {
 	length := len(origData)
-	unpadding := int(origData[length-1])
-	if (length - unpadding) < 0 {
+	unPadding := int(origData[length-1])
+	if (length - unPadding) < 0 {
 		return errors.New("len error"), nil
 	}
-	return nil, origData[:(length - unpadding)]
+	return nil, origData[:(length - unPadding)]
 }
 
 // Generate 256-bit sha256 strings
@@ -77,25 +89,50 @@ func Md5(s []byte) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-// Generating Random Verification Key
-func GetRandomString(l int) string {
-	str := "0123456789abcdefghijklmnopqrstuvwxyzQWERTYUIOPASDFGHJKLZXCVBNM"
-	bts := []byte(str)
-	var result []byte
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	for i := 0; i < l; i++ {
-		result = append(result, bts[r.Intn(len(bts))])
-	}
-	return string(result)
+type RandString struct {
+	base []byte
 }
 
-// 32位输出,可排序，唯一，随机
-func GenerateRandomVKey() string {
-	entropy := ulid.Monotonic(rand.New(rand.NewSource(time.Now().UnixNano())), 0)
-	out := ulid.MustNew(ulid.Timestamp(time.Now()), entropy).String() + GetRandomString(6)
-	return out
+func (r *RandString) AddNum() *RandString {
+	r.base = append(r.base, []byte("0123456789")...)
+	return r
 }
-func GetUlid() string {
-	entropy := ulid.Monotonic(rand.New(rand.NewSource(time.Now().UnixNano())), 0)
+func (r *RandString) AddLetter() *RandString {
+	r.base = append(r.base, []byte("abcdefghijklmnopqrstuvwxyzQWERTYUIOPASDFGHJKLZXCVBNM")...)
+	return r
+}
+func (r *RandString) AddSymbol() *RandString {
+	r.base = append(r.base, []byte("-_.")...)
+	return r
+}
+func (r *RandString) SetBase(base []byte) *RandString {
+	r.base = base
+	return r
+}
+func (r *RandString) Generate(l int) string {
+	if len(r.base) == 0 {
+		r.AddNum().AddLetter()
+	}
+	var res []byte
+	for l > 0 {
+		res = append(res, r.base[rand.Intn(len(r.base))])
+	}
+	return string(res)
+}
+func RandStr() *RandString {
+	return &RandString{}
+}
+
+func RandVKey() string {
+	return ulid.MustNew(ulid.Timestamp(time.Now()), entropy).String() + RandStr().Generate(6)
+}
+func SnowID(workerID int64) int64 {
+	node, _ := snowflake.NewNode(workerID)
+	return node.Generate().Int64()
+}
+func Ulid() string {
 	return ulid.MustNew(ulid.Timestamp(time.Now()), entropy).String()
+}
+func Uuid() string {
+	return uuid.New().String()
 }

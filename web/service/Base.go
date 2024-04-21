@@ -1,7 +1,15 @@
 package service
 
-import "gorm.io/gorm"
+import (
+	"xnps/pkg/database"
+)
 
 type Base struct {
-	GDb *gorm.DB
+	*database.Driver
+	//kv  *cache.Cache
+}
+
+func (b *Base) Service(db *database.Driver) *Base {
+	b.Driver = db
+	return b
 }

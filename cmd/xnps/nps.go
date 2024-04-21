@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"github.com/astaxie/beego"
+	"github.com/kardianos/service"
 	"golang.org/x/exp/slog"
 	"gopkg.in/natefinch/lumberjack.v2"
 	"os"
@@ -11,19 +12,10 @@ import (
 	"runtime"
 	"strings"
 	"sync"
-	"xnps/lib/daemon"
-	"xnps/lib/database/models"
-	"xnps/lib/install"
-	"xnps/lib/sysTool"
-	"xnps/lib/version"
-	"xnps/netCore/server"
-	"xnps/netCore/server/connection"
-	"xnps/netCore/server/tool"
-
-	"xnps/lib/common"
-	"xnps/lib/crypt"
-
-	"github.com/kardianos/service"
+	"xnps/pkg/common"
+	"xnps/pkg/daemon"
+	"xnps/pkg/install"
+	"xnps/pkg/sysTool"
 )
 
 var (
@@ -214,30 +206,30 @@ func (p *nps) run() error {
 }
 
 func run() {
-	task := &models.Tunnel{
-		Mode: "webServer",
-	}
-	bridgePort, err := beego.AppConfig.Int("bridge_port")
-	if err != nil {
-		slog.Error("Getting bridge_port error", err)
-		os.Exit(0)
-	}
-
-	slog.Info("the config path is:" + common.GetRunPath())
-	slog.Info("the version of server is %s ,allow client core version to be %s", version.VERSION, version.GetCoreVersion())
-	//初始化
-	connection.InitConnectionService()
-	//crypt.InitTls(filepath.Join(common.GetRunPath(), "conf", "server.pem"), filepath.Join(common.GetRunPath(), "conf", "server.key"))
-	//初始化密钥
-	crypt.InitTls()
-	//初始化允许的端口
-	tool.InitAllowPort()
-	//持续获取系统信息
-	tool.StartSystemInfo()
+	//task := &models.Tunnel{
+	//	Mode: "webServer",
+	//}
+	//bridgePort, err := beego.AppConfig.Int("bridge_port")
+	//if err != nil {
+	//	slog.Error("Getting bridge_port error", err)
+	//	os.Exit(0)
+	//}
 	//
-	timeout, err := beego.AppConfig.Int("disconnect_timeout")
-	if err != nil {
-		timeout = 60
-	}
-	go server.StartNewServer(bridgePort, task, beego.AppConfig.String("bridge_type"), timeout)
+	//slog.Info("the config path is:" + common.GetRunPath())
+	//slog.Info("the version of server is %s ,allow client core version to be %s", version.VERSION, version.GetCoreVersion())
+	////初始化
+	//connection.InitConnectionService()
+	////crypt.InitTls(filepath.Join(common.GetRunPath(), "conf", "server.pem"), filepath.Join(common.GetRunPath(), "conf", "server.key"))
+	////初始化密钥
+	//crypt.InitTls()
+	////初始化允许的端口
+	//tool.InitAllowPort()
+	////持续获取系统信息
+	//tool.StartSystemInfo()
+	////
+	//timeout, err := beego.AppConfig.Int("disconnect_timeout")
+	//if err != nil {
+	//	timeout = 60
+	//}
+	//go server.StartNewServer(bridgePort, task, beego.AppConfig.String("bridge_type"), timeout)
 }

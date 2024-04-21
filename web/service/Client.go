@@ -2,22 +2,24 @@ package service
 
 import (
 	"errors"
-	"gorm.io/gorm"
 	"strconv"
-	"sync"
-	"xnps/lib/crypt"
-	"xnps/lib/database/models"
-	"xnps/lib/rate"
+	"xnps/pkg/database"
+	"xnps/pkg/models"
+	"xnps/pkg/rate"
 )
 
-type Client Base
-
-func NewClient(db *gorm.DB) *Client {
-	return &Client{GDb: db}
+type Client struct {
+	Base
 }
 
-func (c *Client) SetClientStatus(status bool, clientId int64) {
-	c.GDb.Model(models.Client{}).Where("id = ?", clientId).Updates(&models.Client{Connected: status})
+func NewClient(db *database.Driver) *Client {
+	c := &Client{}
+	c.Service(db)
+	return c
+}
+
+func (c *Client) SetConnectedStatus(status bool, clientId int64) {
+	c.Orm(models.Client{}).Where("id = ?", clientId).Updates(&models.Client{Connected: status})
 }
 
 func (c *Client) CreatClient(vKey string) *models.Client {
@@ -28,8 +30,6 @@ func (c *Client) CreatClient(vKey string) *models.Client {
 		Valid:      true,
 		Connected:  false,
 		RateLimit:  0,
-		Rate:       nil,
-		RWMutex:    sync.RWMutex{},
 	}
 }
 

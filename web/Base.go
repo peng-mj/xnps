@@ -3,55 +3,42 @@ package web
 import (
 	"errors"
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt"
 	"github.com/juju/ratelimit"
-	"gorm.io/gorm"
 	"net/http"
-	"strings"
-	"sync"
 	"time"
-	"xnps/lib/crypt"
+	"xnps/pkg/crypt"
+	"xnps/pkg/database"
 	"xnps/web/api"
 	"xnps/web/dto"
 	"xnps/web/service"
 )
 
-type WebServer struct {
-	//e        *echo.Echo
-	g *gin.Engine
-
-	//tokenMan TokenManager
+type Server struct {
+	g         *gin.Engine
+	CloseFlag chan struct{}
 }
 
-type jwtCustomClaims struct {
-	Name  string `json:"name"`
-	Admin bool   `json:"admin"`
-	jwt.StandardClaims
+func NewServer() *Server {
+	return &Server{}
 }
 
-func (w *WebServer) Start(url string, db *gorm.DB) {
-	var wg sync.WaitGroup
-	wg.Add(1)
-	defer wg.Done()
+func (w *Server) Start(host string, db *database.Driver) {
 	w.g = gin.Default()
 	w.g.Use(gin.Logger(), gin.Recovery())
-
-	//w.g.POST("/doLogin", w.DoLogin)
-	//w.g.POST("/doLogin", gin.WrapF(w.DoLogin))
-	w.g.GET("/ping", w.DoLogin).
+	xnps := w.g.Group("/api/xnps")
+	xnps.GET("/ping", api.Ping).
 		GET("/doLogin", w.DoLogin).
 		POST("/login", w.Login)
-	apiRouter := w.g.Group("api")
-	apiRouter.Use(w.jwtMiddleware())
+	kit := &service.Base{}
+	kit = kit.Service(db)
+	middle := NewMiddle(kit)
 
-	w.ApiRouterRules("/Api")
-	//w.e.Logger.Fatal(w.e.Start(url))
-}
+	userApi := service.NewAuthUser(kit)
+	userGroup := xnps.Group("/user", middle.AuthMiddle, middle.GetUser)
+	userGroup.GET("/all")
 
-func (w *WebServer) ApiRouterRules(pre string) {
-	r := w.g.Group(pre)
-	r = w.g.Group("/Api")
-	r.Use(w.jwtMiddleware())
+	r := xnps.Group("/group").Use(middle.AuthMiddle, middle.GetUser)
+
 	//分组管理
 	r.POST("/group/get/all", api.GetAllGroup)
 	r.POST("/group/get/condition", api.GetGroupByCondition)
@@ -77,50 +64,20 @@ func (w *WebServer) ApiRouterRules(pre string) {
 	r.POST("/block/update/one", api.EditBlockList)
 	r.POST("/block/delete/one", api.DelBlockList)
 
-}
+	w.ApiRouterRules("/Api")
+	if err := w.g.Run(host); err == nil {
+		select {
+		case <-w.CloseFlag:
 
-func (w *WebServer) jwtMiddleware() func(ctx *gin.Context) {
-	return func(ctx *gin.Context) {
-		tokenString := ctx.Request.Header.Get("Authorization")
-		if tokenString == "" {
-			ctx.JSON(http.StatusUnauthorized, gin.H{
-				"code": 2003,
-				"msg":  "",
-			})
-			ctx.Abort()
-			return
 		}
-		tokenString = strings.Replace(tokenString, "Bearer ", "", 1)
-		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); ok {
-				if claims, ok := token.Claims.(jwt.MapClaims); ok {
-					if uuid, ok := claims["uuid"].(string); ok {
-						if secret, ok := w.secret.GetString(uuid); ok {
-							return []byte(secret), nil
-						}
-					}
-				}
-			}
-			return nil, errors.New(http.StatusText(http.StatusUnauthorized))
-		})
-		if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid && err == nil {
-			//TODO：这个地方可有可无->Set
-			ctx.Set("user", claims)
-			return
-		}
-		ctx.Next()
 	}
 }
 
-func (w *WebServer) generateToken(username, uid, passwd string, timeoutHour int) string {
-	claims := w.JWTToken.Claims.(jwt.MapClaims)
-	claims["username"] = username
-	claims["uid"] = uid
-	claims["exp"] = time.Now().Add(time.Hour * time.Duration(timeoutHour)).Unix() // 设置Token的有效期
-	tokenString, _ := w.JWTToken.SignedString([]byte(passwd))
-	return tokenString
+func (w *Server) ApiRouterRules(pre string) {
+
 }
-func (w *WebServer) RateLimitMiddleware(fillInterval time.Duration, cap, quantum int64) gin.HandlerFunc {
+
+func (w *Server) RateLimitMiddleware(fillInterval time.Duration, cap, quantum int64) gin.HandlerFunc {
 	bucket := ratelimit.NewBucketWithQuantum(fillInterval, cap, quantum)
 	return func(ctx *gin.Context) {
 		if bucket.TakeAvailable(1) < 1 {
@@ -133,7 +90,7 @@ func (w *WebServer) RateLimitMiddleware(fillInterval time.Duration, cap, quantum
 }
 
 // Login 登录信息
-func (w *WebServer) Login(ctx *gin.Context) {
+func (w *Server) Login(ctx *gin.Context) {
 	var login dto.Login
 	var token string
 	var err error
@@ -146,7 +103,7 @@ func (w *WebServer) Login(ctx *gin.Context) {
 				if passwd = crypt.Sha256(Salt + "." + passwd); login.Password != passwd {
 					err = errors.New("username or password error")
 				} else {
-					salt := crypt.GetUlid()
+					salt := crypt.Ulid()
 					token = w.generateToken(login.Username, salt, passwd, 1)
 					w.secret.Add(salt, passwd)
 					w.salt.Remove(login.Username)
@@ -159,13 +116,13 @@ func (w *WebServer) Login(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, api.Replay(ctx, err, token))
 }
 
-func (w *WebServer) DoLogin(ctx *gin.Context) {
+func (w *Server) DoLogin(ctx *gin.Context) {
 	var doLogin dto.DoLogin
 	var Salt string
 	var err error
 	if err = ctx.ShouldBindJSON(&doLogin); err == nil {
 		if service.GetDb().CheckUserName(doLogin.Username) {
-			Salt = crypt.GenerateRandomVKey()
+			//Salt = crypt.RandVKey()
 			w.salt.Add(doLogin.Username, Salt)
 		}
 	}

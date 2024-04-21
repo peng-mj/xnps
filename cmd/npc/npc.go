@@ -13,8 +13,9 @@ import (
 	"time"
 	"xnps/pkg/common"
 	"xnps/pkg/config"
-	"xnps/pkg/database/models"
+	_ "xnps/pkg/crypt"
 	"xnps/pkg/install"
+	"xnps/pkg/models"
 	"xnps/pkg/sysTool"
 	"xnps/pkg/version"
 )

@@ -2,35 +2,42 @@ package service
 
 import (
 	"errors"
-	"golang.org/x/exp/slog"
-	"gorm.io/gorm"
-	"os"
-	"xnps/lib/database"
-	"xnps/lib/database/models"
+	"xnps/pkg/models"
 )
 
-type DbUtils struct {
-	GDb *gorm.DB
+type AuthUser struct {
+	*Base
 }
 
-type User Base
-
-// init csv from file
-func GetDb() *DbUtils {
-	if database.Db == nil {
-		//logs.Info("数据库未打开")
-		slog.Error("数据库未打开")
-
-		os.Exit(-1)
-	}
-	return database.Db
+func NewAuthUser(db *Base) *AuthUser {
+	a := &AuthUser{}
+	a.Base = db
+	return a
 }
 
-func (s *DbUtils) GetPasswdByUser(user string) (passwd string, err error) {
-	sys := new(models.SystemConfig)
-	if s.GDb.Model(models.SystemConfig{}).Where("web_username = ?", user).First(sys).RowsAffected > 0 {
-		return sys.WebPassword, nil
-	} else {
-		return "", errors.New("have no user named " + user)
+func (s *AuthUser) CheckPasswd(name, password, otp string) error {
+	var user models.AuthUser
+	if s.Orm(models.AuthUser{}).Where("username = ? or (emil_enable = 1 and emil = ?) ", name, name).First(&user).RowsAffected == 0 {
+		return errors.New("user not found")
 	}
+	if password != user.Password {
+		return errors.New("password error")
+	}
+
+	return nil
+}
+func (s *AuthUser) GetUserByUid(uid string) (user models.AuthUser, err error) {
+	if s.Orm(models.AuthUser{}).Where("uid = ?", uid).First(&user).RowsAffected == 0 {
+		err = errors.New("user not found")
+	}
+	return
+}
+
+// GetAllUser just admin
+func (s *AuthUser) GetAllUser() (user []models.AuthUser, err error) {
+	user = make([]models.AuthUser, 0)
+	if s.Orm(models.AuthUser{}).Find(&user).RowsAffected == 0 {
+		err = errors.New("user not found")
+	}
+	return
 }

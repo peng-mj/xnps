@@ -1,29 +1,9 @@
 package common
 
+import "net/http"
+
 const (
-	CONN_DATA_SEQ     = "*#*" //Separator
-	VERIFY_EER        = "vkey"
-	VERIFY_SUCCESS    = "sucs"
-	WORK_MAIN         = "main" //主连接
-	WORK_CHAN         = "chan" //隧道
-	WORK_CONFIG       = "conf" //通过配置文件连接
-	WORK_REGISTER     = "rgst" //注册
-	WORK_SECRET       = "sert" //私密代理
-	WORK_FILE         = "file" //文件代理，后续去掉
-	WORK_P2P          = "p2pm" //p2p，后续去掉
-	WORK_P2P_VISITOR  = "p2pv"
-	WORK_P2P_PROVIDER = "p2pp"
-	WORK_P2P_CONNECT  = "p2pc"
-	WORK_P2P_SUCCESS  = "p2ps"
-	WORK_P2P_END      = "p2pe"
-	WORK_STATUS       = "stus"
-	RES_CLOSE         = "clse"
-	NEW_UDP_CONN      = "udpc" //p2p udp conn
-	NEW_TASK          = "task"
-	NEW_CONF          = "conf"
-	CONN_TCP          = "tcp"
-	CONN_UDP          = "udp"
-	CONN_TEST         = "TST"
+	CONN_DATA_SEQ = "*#*" //Separator
 
 	UnauthorizedBytes = `HTTP/1.1 401 Unauthorized
 Content-Type: text/plain; charset=utf-8
@@ -41,10 +21,14 @@ WWW-Authenticate: Basic realm="easyProxy"
 	MODE_P2P     = "p2p"
 )
 
-type MsgType uint16
+type CodeEnum uint16
 
-func (m *MsgType) GetMsg() string {
-	switch *m {
+func (m CodeEnum) String() string {
+	res := http.StatusText(int(m))
+	if len(res) != 0 {
+		return res
+	}
+	switch m {
 	//连接参数
 	case 0:
 		return "close"
@@ -67,35 +51,32 @@ func (m *MsgType) GetMsg() string {
 	case 9:
 		return ""
 	//	连接类型(正常)
-	case 100:
+	case 10:
 		return "tcp"
-	case 101:
+	case 11:
 		return "udp"
-	case 102:
+	case 12:
 		return "kcp"
-	case 103:
+	case 13:
 		return "p2p"
 	//连接类型（加密）
-	case 200:
+	case 20:
 		return "s-tcp"
-	case 201:
+	case 21:
 		return "s-udp"
-	case 202:
+	case 22:
 		return "s-kcp"
-	case 203:
+	case 23:
 		return "s-p2p"
-	case 1000:
+	//	连接状态
+	case 30:
 		return "success"
-	case 2000:
+	case 40:
 		return "client error"
-	case 3000:
+	case 50:
 		return "server error"
 
 	default:
 		return "unknown type"
 	}
-}
-
-func IsTunnelMode(md string) bool {
-	return md == MODE_P2P || md == MODE_TCP || md == MODE_UDP || md == MODE_HTTP || md == MODE_HTTPS || md == MODE_SECRECT
 }

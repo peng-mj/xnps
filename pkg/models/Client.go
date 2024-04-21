@@ -2,6 +2,7 @@ package models
 
 type Client struct {
 	Id                 int64   `gorm:"column:id;type:integer;auto_increment;not null;primaryKey;" json:"id"`
+	UserUid            string  `gorm:"column:user_uid;type:integer;not null;default:0" json:"user_uid"`              //所属分组ID
 	GroupId            int64   `gorm:"column:group_id;type:integer;not null;default:0" json:"group_id"`              //所属分组ID
 	AccessId           string  `gorm:"column:access_id;type:varchar(64);not null" json:"access_id"`                  //认证ID
 	AccessKey          string  `gorm:"column:access_key;type:varchar(128);not null" json:"access_key"`               //认证密钥
