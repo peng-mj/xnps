@@ -3,25 +3,34 @@ package api
 import (
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"xnps/web/service"
 )
 
-func GetAllGroup(ctx *gin.Context) {
+type Group struct {
+	kit *service.Base
+}
+
+func NewGroup(dr *service.Base) *Group {
+	return &Group{kit: dr}
+}
+
+func (b *Group) GetAll(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, "")
 }
-func GetGroupByCondition(ctx *gin.Context) {
+func (b *Group) GetByFilter(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, "")
 }
-func AddGroup(ctx *gin.Context) {
+func (b *Group) Create(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, "")
 }
-func DelGroup(ctx *gin.Context) {
+func (b *Group) Delete(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, "")
 }
-func EditGroup(ctx *gin.Context) {
+func (b *Group) Update(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, "")
 }

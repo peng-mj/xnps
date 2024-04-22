@@ -3,26 +3,39 @@ package api
 import (
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"xnps/web/service"
 )
 
-func GetAllTunnel(c *gin.Context) {
+type Tunnel struct {
+	kit *service.Base
+}
+
+func NewTunnel(dr *service.Base) *Tunnel {
+	return &Tunnel{kit: dr}
+}
+
+func (t *Tunnel) GetAll(c *gin.Context) {
 
 	c.JSON(http.StatusOK, "")
 }
-func GetTunnelByCondition(c *gin.Context) {
+func (t *Tunnel) GetFilter(c *gin.Context) {
 
 	c.JSON(http.StatusOK, "")
 }
-func AddTunnel(c *gin.Context) {
+func (t *Tunnel) GetByIds(c *gin.Context) {
 
 	c.JSON(http.StatusOK, "")
 }
-func DelTunnel(c *gin.Context) {
+func (t *Tunnel) Create(c *gin.Context) {
+
+	c.JSON(http.StatusOK, "")
+}
+func (t *Tunnel) Delete(c *gin.Context) {
 
 	c.JSON(http.StatusOK, "")
 }
 
-func EditTunnel(c *gin.Context) {
+func (t *Tunnel) Update(c *gin.Context) {
 
 	c.JSON(http.StatusOK, "")
 }

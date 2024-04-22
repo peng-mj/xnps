@@ -7,6 +7,7 @@ import (
 	"time"
 	"xnps/pkg/cache"
 	"xnps/pkg/jwtTool"
+	"xnps/web/api"
 	"xnps/web/dto"
 	"xnps/web/service"
 )
@@ -62,4 +63,27 @@ func (m *MiddleBase) GetUser(ctx *gin.Context) {
 			})
 		}
 	}
+}
+
+// Login 登录信息
+func (m *MiddleBase) Login(ctx *gin.Context) {
+	var login dto.LoginReq
+	var err error
+
+	if err = ctx.ShouldBindJSON(&login); err == nil {
+		user, code := service.NewAuthUser(m.kid).CheckPasswd(&login)
+		if code != 200 {
+			api.RepError(ctx, code.Int())
+		}
+		token := m.token.Generate(user.Uid, time.Hour*2)
+		api.Response(ctx, token)
+		ctx.Abort()
+		return
+	}
+	api.RepError(ctx, dto.ErrParam)
+}
+
+func (m *MiddleBase) RateLimitMiddle(ctx *gin.Context) {
+
+	ctx.Next()
 }

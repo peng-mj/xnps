@@ -15,12 +15,26 @@ func NewUser(dr *service.Base) *AuthUser {
 }
 
 func (a *AuthUser) GetAllUser(ctx *gin.Context) {
-
-	ctx.JSON(http.StatusOK, "")
+	auth := GetUser(ctx)
+	if auth == nil || (auth != nil && auth.AuthLevel > 0) {
+		RepError(ctx, http.StatusForbidden)
+		return
+	}
+	user := service.NewAuthUser(a.kit).GetAllUser()
+	Response(ctx, user)
 }
 func (a *AuthUser) GetUserByUid(ctx *gin.Context) {
-
-	ctx.JSON(http.StatusOK, "")
+	auth := GetUser(ctx)
+	if auth == nil {
+		RepError(ctx, http.StatusForbidden)
+		return
+	}
+	user, err := service.NewAuthUser(a.kit).GetUserByUid(auth.Uid)
+	if err != nil {
+		RepError(ctx, http.StatusNotFound)
+		return
+	}
+	Response(ctx, user)
 }
 func (a *AuthUser) Login(ctx *gin.Context) {
 

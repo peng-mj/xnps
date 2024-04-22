@@ -2,7 +2,9 @@ package service
 
 import (
 	"errors"
+	"xnps/pkg/crypt"
 	"xnps/pkg/models"
+	"xnps/web/dto"
 )
 
 type AuthUser struct {
@@ -15,16 +17,29 @@ func NewAuthUser(db *Base) *AuthUser {
 	return a
 }
 
-func (s *AuthUser) CheckPasswd(name, password, otp string) error {
-	var user models.AuthUser
-	if s.Orm(models.AuthUser{}).Where("username = ? or (emil_enable = 1 and emil = ?) ", name, name).First(&user).RowsAffected == 0 {
-		return errors.New("user not found")
+func (s *AuthUser) CheckPasswd(auth *dto.LoginReq) (user *models.AuthUser, code dto.RspCode) {
+	user = new(models.AuthUser)
+	if s.Orm(models.AuthUser{}).Where("username = ? or (emil_enable = 1 and emil = ?) ", auth.Username, auth.Password).First(&user).RowsAffected == 0 {
+		return nil, dto.RspCode(dto.ErrNotFound)
 	}
-	if password != user.Password {
-		return errors.New("password error")
-	}
+	var otpCOde, passwd string
+	if user.OTAEnable {
+		if len(auth.OtpCode) != 6 {
+			//return errors.New("need otp code")
+			return nil, dto.RspCode(dto.NeedOtpCode)
 
-	return nil
+		}
+		//TODO: design a otp login
+		//	get otp code
+		//otpCOde={otp code}
+		passwd = crypt.Sha256(auth.Username + "." + user.Password + "." + otpCOde)
+	} else {
+		passwd = crypt.Sha256(auth.Username + "." + user.Password)
+	}
+	if auth.Password != passwd {
+		return nil, dto.RspCode(dto.NeedOtpCode)
+	}
+	return user, dto.RspCode(200)
 }
 func (s *AuthUser) GetUserByUid(uid string) (user models.AuthUser, err error) {
 	if s.Orm(models.AuthUser{}).Where("uid = ?", uid).First(&user).RowsAffected == 0 {
@@ -34,10 +49,11 @@ func (s *AuthUser) GetUserByUid(uid string) (user models.AuthUser, err error) {
 }
 
 // GetAllUser just admin
-func (s *AuthUser) GetAllUser() (user []models.AuthUser, err error) {
+func (s *AuthUser) GetAllUser() (user []models.AuthUser) {
 	user = make([]models.AuthUser, 0)
-	if s.Orm(models.AuthUser{}).Find(&user).RowsAffected == 0 {
-		err = errors.New("user not found")
-	}
+	s.Orm(models.AuthUser{}).Find(&user)
 	return
+}
+func (s *AuthUser) Create(user models.AuthUser) {
+
 }

@@ -14,15 +14,12 @@ func (e ErCode) ToMsg() string {
 	return http.StatusText(int(e))
 }
 
-func GetCode(ctx *gin.Context) int {
-	if v, ok := ctx.Get("errorCode"); ok {
-		return v.(int)
-	}
-	return 0
+func Response(ctx *gin.Context, data interface{}) {
+	ctx.JSON(http.StatusOK, dto.Response{Code: http.StatusOK, Data: data})
+	return
 }
-
-func Replay(ctx *gin.Context, err error, data interface{}) (ReData dto.Response) {
-	GetCode(ctx)
+func RepError(ctx *gin.Context, code int) {
+	ctx.JSON(code, dto.Response{Code: code, ErMsg: ErCode(code).ToMsg()})
 	return
 }
 
