@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>系统初始化表单</title>
+    <script>
+        function submitForm() {
+            // 获取表单数据
+            var formData = {
+                username: document.getElementById('username').value,
+                password: document.getElementById('password').value,
+                email: document.getElementById('email').value,
+                configPath: document.getElementById('configPath').value,
+                systemPort: document.getElementById('systemPort').value,
+                servicePort: document.getElementById('servicePort').value,
+                enableOTP: document.getElementById('enableOTP').checked,
+                openPortsRange: document.getElementById('openPortsRange').value,
+                logPath: document.getElementById('logPath').value,
+                maxDevices: document.getElementById('maxDevices').value,
+                enableEmailAlerts: document.getElementById('enableEmailAlerts').checked,
+                authCode: document.getElementById('authCode').value
+            };
+
+            // 将表单数据转换为JSON字符串
+            var formDataJSON = JSON.stringify(formData);
+
+            // 创建XMLHttpRequest对象
+            var xhr = new XMLHttpRequest();
+
+            // 设置请求方法和URL
+            xhr.open('POST', '/api/system/init', true);
+
+            // 设置请求头
+            xhr.setRequestHeader('Content-Type', 'application/json');
+
+            // 发送请求
+            xhr.send(formDataJSON);
+
+            // 处理响应
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        // 请求成功
+                        document.getElementById('status').innerText = '请求成功，正在跳转...';
+                        // 延迟跳转
+                        setTimeout(function() {
+                            window.location.href = '/hellowoord';
+                        }, 1000);
+                    } else {
+                        // 请求失败
+                        try {
+                            var response = JSON.parse(xhr.responseText);
+                            alert('请求失败: ' + response.msg);
+                        } catch (e) {
+                            alert('请求失败: 无法解析服务器响应');
+                        }
+                    }
+                }
+            };
+        }
+    </script>
+</head>
+<body>
+<h1>系统初始化表单</h1>
+<form onsubmit="submitForm(); return false;">
+    <div>
+        <label for="username">用户名:</label>
+        <input type="text" id="username" name="username" required>
+    </div>
+    <div>
+        <label for="password">密码:</label>
+        <input type="password" id="password" name="password" required>
+    </div>
+    <div>
+        <label for="email">邮箱:</label>
+        <input type="email" id="email" name="email" required>
+    </div>
+    <div>
+        <label for="configPath">配置文件路径:</label>
+        <input type="text" id="configPath" name="configPath" required>
+    </div>
+    <div>
+        <label for="systemPort">系统运行端口:</label>
+        <input type="number" id="systemPort" name="systemPort" required>
+    </div>
+    <div>
+        <label for="servicePort">服务运行端口:</label>
+        <input type="number" id="servicePort" name="servicePort" required>
+    </div>
+    <div>
+        <label>
+            <input type="checkbox" id="enableOTP" name="enableOTP"> 是否开启OTP
+        </label>
+    </div>
+    <div>
+        <label for="openPortsRange">允许的开放端口范围:</label>
+        <input type="text" id="openPortsRange" name="openPortsRange" required>
+    </div>
+    <div>
+        <label for="logPath">日志存放路径:</label>
+        <input type="text" id="logPath" name="logPath" required>
+    </div>
+    <div>
+        <label for="maxDevices">最大设备数:</label>
+        <input type="number" id="maxDevices" name="maxDevices" required>
+    </div>
+    <div>
+        <label>
+            <input type="checkbox" id="enableEmailAlerts" name="enableEmailAlerts"> 是否开启邮件提醒
+        </label>
+    </div>
+    <div>
+        <label for="authCode">授权码:</label>
+        <input type="text" id="authCode" name="authCode" required>
+    </div>
+    <div>
+        <button type="submit">提交</button>
+        <span id="status"></span>
+    </div>
+</form>
+
+</body> </html>
