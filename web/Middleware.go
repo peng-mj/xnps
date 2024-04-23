@@ -2,6 +2,7 @@ package web
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/juju/ratelimit"
 	"net/http"
 	"strings"
 	"time"
@@ -83,7 +84,21 @@ func (m *MiddleBase) Login(ctx *gin.Context) {
 	api.RepError(ctx, dto.ErrParam)
 }
 
-func (m *MiddleBase) RateLimitMiddle(ctx *gin.Context) {
+// func (m *MiddleBase) RateLimitMiddle(ctx *gin.Context) {
+//
+//		ctx.Next()
+//	}
 
-	ctx.Next()
+func (m *MiddleBase) RateLimitMiddle(fillInterval time.Duration, cap, quantum int64) gin.HandlerFunc {
+	bucket := ratelimit.NewBucketWithQuantum(fillInterval, cap, quantum)
+	return func(ctx *gin.Context) {
+		// Maybe it's better to limit the frequency by IP address
+		// ctx.Request.RemoteAddr   -> limit ip
+		if bucket.TakeAvailable(1) < 1 {
+			ctx.String(http.StatusForbidden, "rate limit...")
+			ctx.Abort()
+			return
+		}
+		ctx.Next()
+	}
 }

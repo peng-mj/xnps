@@ -1,8 +1,9 @@
 package web
 
 import (
+	"context"
 	"github.com/gin-gonic/gin"
-	"github.com/juju/ratelimit"
+	"golang.org/x/exp/slog"
 	"net/http"
 	"time"
 	"xnps/pkg/database"
@@ -11,24 +12,63 @@ import (
 )
 
 type Server struct {
-	engin     *gin.Engine
+	engin *gin.Engine
+
 	host      string
 	kit       *service.Base
 	CloseFlag chan struct{}
 }
 
-func NewServer() *Server {
-	return &Server{}
+func New() *Server {
+	return &Server{
+		engin:     gin.Default(),
+		CloseFlag: make(chan struct{}),
+		kit:       &service.Base{},
+	}
 }
 func (w *Server) Close() {
 	w.CloseFlag <- struct{}{}
 }
 
-func (w *Server) Start(host string, db *database.Driver) {
-	w.engin = gin.Default()
+func (w *Server) InitSys(host string) (err error) {
+	db, err := database.New().Sqlite("temp.sqlite").Init()
+
+	if err != nil {
+		slog.Error("failed to create a temporary database file, check whether you have permissions for bin")
+	}
 	w.engin.Use(gin.Logger(), gin.Recovery())
-	w.CloseFlag = make(chan struct{})
-	w.kit = &service.Base{}
+	w.kit = w.kit.Service(db)
+	system := api.NewSystem(w.kit)
+	w.engin.GET("/static/system/init", system.StaticInit).
+		GET("/static/system/success", system.StaticSuccess).
+		POST("/api/system", system.Init)
+
+	sev := http.Server{Addr: host, Handler: w.engin}
+	go func() {
+		if err = sev.ListenAndServe(); err != nil {
+			slog.Error("listen web server", "error", err)
+		}
+	}()
+
+	select {
+	case <-w.CloseFlag:
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+		defer cancel()
+		if err = sev.Shutdown(ctx); err != nil {
+			slog.Error("init web server close failed", "error", err)
+		} else {
+			slog.Info("init web server close succeed")
+		}
+		return err
+	}
+}
+
+func (w *Server) Listen() {
+
+}
+
+func (w *Server) Start(host string, db *database.Driver) {
+	w.engin.Use(gin.Logger(), gin.Recovery())
 	w.kit = w.kit.Service(db)
 	middle := NewMiddle(w.kit)
 	xnps := w.engin.Group("/api/xnps")
@@ -66,34 +106,22 @@ func (w *Server) Start(host string, db *database.Driver) {
 		DELETE("/:id", tunnelApi.Delete)
 
 	blockApi := api.NewBlock(w.kit)
-	block := xnps.Group("/tunnel").Use(middle.AuthMiddle, middle.GetUser)
+	block := xnps.Group("/block").Use(middle.AuthMiddle, middle.GetUser)
 	block.GET("", blockApi.GetByIds).
 		GET("/all", blockApi.GetAll).
 		POST("/filter", blockApi.GetFilter).
 		POST("/create", blockApi.Create).
 		PUT("/:id", blockApi.Update).
 		DELETE("/:id", blockApi.Delete)
-
-	if err := w.engin.Run(host); err == nil {
-		select {
-		case <-w.CloseFlag:
-			return
+	go func() {
+		err := w.engin.Run(host)
+		if err != nil {
+			slog.Error("start web error", "error", err)
 		}
+	}()
+	select {
+	case <-w.CloseFlag:
+		return
 	}
-}
 
-func (w *Server) ApiRouterRules(pre string) {
-
-}
-
-func (w *Server) RateLimitMiddleware(fillInterval time.Duration, cap, quantum int64) gin.HandlerFunc {
-	bucket := ratelimit.NewBucketWithQuantum(fillInterval, cap, quantum)
-	return func(ctx *gin.Context) {
-		if bucket.TakeAvailable(1) < 1 {
-			ctx.String(http.StatusForbidden, "rate limit...")
-			ctx.Abort()
-			return
-		}
-		ctx.Next()
-	}
 }

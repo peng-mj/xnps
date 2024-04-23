@@ -14,6 +14,7 @@ const (
 )
 
 type Driver struct {
+	db         gorm.Dialector
 	orm        *gorm.DB
 	dbType     int
 	dbPath     string
@@ -23,14 +24,15 @@ type Driver struct {
 func New() *Driver {
 	return &Driver{}
 }
-func (c *Driver) NewSqlite(name string) {
+func (c *Driver) Sqlite(name string) *Driver {
 	c.dbPath = name
 	c.dbType = SQLITE
+	return c
 }
 
-// NewMysql Not yet enabled
+// Mysql Not yet enabled
 // url=username:password@tcp(127.0.0.1:3306)/dbname?charset=utf8mb4&parseTime=True&loc=Local
-func (c *Driver) NewMysql(url string) *Driver {
+func (c *Driver) Mysql(url string) *Driver {
 	c.dbPath = url
 	c.dbType = MYSQL
 	return c
@@ -45,12 +47,13 @@ func (c *Driver) Init() (driver *Driver, err error) {
 	}
 	switch c.dbType {
 	case SQLITE:
-		c.orm, err = gorm.Open(sqlite.Open(c.dbPath), &gorm.Config{})
+		c.db = sqlite.Open(c.dbPath)
 	case MYSQL:
-		c.orm, err = gorm.Open(mysql.Open(c.dbPath), &gorm.Config{})
+		c.db = mysql.Open(c.dbPath)
 	default:
 		return nil, errors.New("database config not init")
 	}
+	c.orm, err = gorm.Open(c.db, &gorm.Config{})
 	if err == nil {
 		err = c.orm.AutoMigrate(c.tableModel)
 		if err != nil {
