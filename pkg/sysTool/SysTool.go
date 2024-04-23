@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"time"
-	"xnps/lib/crypt"
+	"xnps/pkg/crypt"
 )
 
 // 判断文件夹是否存在
