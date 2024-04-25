@@ -95,7 +95,7 @@ func (m *MiddleBase) RateLimitMiddle(fillInterval time.Duration, cap, quantum in
 		// Maybe it's better to limit the frequency by IP address
 		// ctx.Request.RemoteAddr   -> limit ip
 		if bucket.TakeAvailable(1) < 1 {
-			ctx.String(http.StatusForbidden, "rate limit...")
+			api.RepError(ctx, dto.ErrRateLimit)
 			ctx.Abort()
 			return
 		}

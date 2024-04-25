@@ -36,12 +36,21 @@ func (a *AuthUser) GetUserByUid(ctx *gin.Context) {
 	}
 	Response(ctx, user)
 }
-func (a *AuthUser) Login(ctx *gin.Context) {
+
+func (a *AuthUser) UpdateUser(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, "")
 }
 
-func (a *AuthUser) UpdateUser(ctx *gin.Context) {
+func (a *AuthUser) CreateNewUser(ctx *gin.Context) {
+	user := GetUser(ctx)
+	if user == nil {
+
+	}
+
+	ctx.JSON(http.StatusOK, "")
+}
+func (a *AuthUser) CreateRootUser(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, "")
 }

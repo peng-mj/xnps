@@ -71,9 +71,10 @@ func (w *Server) Start(host string, db *database.Driver) {
 	w.engin.Use(gin.Logger(), gin.Recovery())
 	w.kit = w.kit.Service(db)
 	middle := NewMiddle(w.kit)
+
 	xnps := w.engin.Group("/api/xnps")
-	xnps.GET("/ping", api.Ping).
-		POST("/login", middle.Login)
+	xnps.GET("/ping", middle.RateLimitMiddle(time.Second, 100, 10), api.Ping).
+		POST("/login", middle.RateLimitMiddle(time.Second, 100, 10), middle.Login)
 	//user
 	userApi := api.NewUser(w.kit)
 	userGroup := xnps.Group("/user", middle.AuthMiddle, middle.GetUser)
