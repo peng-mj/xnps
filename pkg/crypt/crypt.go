@@ -102,7 +102,7 @@ func (r *RandString) AddLetter() *RandString {
 	return r
 }
 func (r *RandString) AddSymbol() *RandString {
-	r.base = append(r.base, []byte("-_.")...)
+	r.base = append(r.base, []byte("-_=#$|?/.,;:+*@~")...)
 	return r
 }
 func (r *RandString) SetBase(base []byte) *RandString {
@@ -116,9 +116,18 @@ func (r *RandString) Generate(l int) string {
 	var res []byte
 	for l > 0 {
 		res = append(res, r.base[rand.Intn(len(r.base))])
+		l--
 	}
 	return string(res)
 }
+func (r *RandString) GenerateList(length, num int) []string {
+	res := make([]string, num)
+	for i := range res {
+		res[i] = r.Generate(length)
+	}
+	return res
+}
+
 func RandStr() *RandString {
 	return &RandString{}
 }

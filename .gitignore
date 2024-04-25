@@ -11,5 +11,6 @@ TEMP
 .idea
 log
 *.bkp
+*.toml
 
 

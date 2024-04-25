@@ -3,9 +3,10 @@ package dto
 import "net/http"
 
 const (
-	ErrParam    = 1000
-	ErrNotFound = 1001
-	ErrPasswd   = 1002
+	ErrParam     = 1000
+	ErrNotFound  = 1001
+	ErrPasswd    = 1002
+	ErrRateLimit = 1003
 
 	NeedOtpCode = 2000
 )
@@ -14,7 +15,7 @@ type RspCode int
 
 func (m RspCode) String() string {
 	res := http.StatusText(int(m))
-	if len(res) != 0 {
+	if res != "" {
 		return res
 	}
 	switch m {
@@ -25,6 +26,8 @@ func (m RspCode) String() string {
 		return "data not found"
 	case ErrPasswd:
 		return "password or username error"
+	case ErrRateLimit:
+		return "rate limit"
 
 	case NeedOtpCode:
 		return "need otp code"

@@ -1,43 +1,51 @@
 package config
 
 import (
+	"github.com/BurntSushi/toml"
 	"os"
-	"xnps/pkg/sysTool"
-
-	"golang.org/x/exp/slog"
 )
 
-var (
-	sysConf SysConfig
-)
-
-const (
-	SoftWareVersion = "XNPS_2023-0.0.1"
-)
-
-type SysConfig struct {
-	driver *Driver `json:"-"`
+type Driver struct {
+	fileName string
+	Meta     toml.MetaData
 }
 
-func SysConfigInit() {
+func New(fName string) *Driver {
+	return &Driver{fileName: fName}
+}
+func (d *Driver) SetFile(f string) *Driver {
+	d.fileName = f
+	return d
+}
+
+func (d *Driver) Load() (Config, error) {
 	var err error
-	if sysTool.FileExisted("/etc/xnps/xnps.ini") {
-		sysConf.driver, err = NewSysConfig("/etc/xnps/xnps.ini")
-	} else if sysTool.FileExisted("./conf/xnps.ini") {
-		sysConf.driver, err = NewSysConfig("./conf/xnps.ini")
-	} else {
-		slog.Info(``)
-		sysTool.CreateFolder("./conf")
-		sysTool.CreateAndWriteFile("./conf/xnps.ini", InitFileContent)
-		sysConf.driver, err = NewSysConfig("./conf/xnps.ini")
-	}
+	var config Config
+	d.Meta, err = toml.DecodeFile(d.fileName, &config)
 	if err != nil {
-		slog.Info("打开配置文件失败,请检查")
-		os.Exit(-1)
+		return Config{}, err
 	}
-
+	return config, err
 }
 
-func SysConf() *SysConfig {
-	return &sysConf
+func (d *Driver) Update(config Config) error {
+
+	f, err := os.Create(d.fileName)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	err = toml.NewEncoder(f).Encode(config)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func CreateNewInitFile(path string) error {
+	err := os.WriteFile(path, []byte(InitFileServer), 0666)
+	if err != nil {
+		return err
+	}
+	return nil
 }
