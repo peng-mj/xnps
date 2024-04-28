@@ -1,28 +1,28 @@
 package common
 
 //
-//const MaxMsgLen = 5000
+// const MaxMsgLen = 5000
 //
-//var logMsgs string
+// var logMsgs string
 //
-//func init() {
+// func init() {
 //	logs.Register("store", func() logs.Logger {
 //		return new(StoreMsg)
 //	})
-//}
+// }
 //
-//func GetLogMsg() string {
+// func GetLogMsg() string {
 //	return logMsgs
-//}
+// }
 //
-//type StoreMsg struct {
-//}
+// type StoreMsg struct {
+// }
 //
-//func (lg *StoreMsg) Init(config string) error {
+// func (lg *StoreMsg) Init(config string) error {
 //	return nil
-//}
+// }
 //
-//func (lg *StoreMsg) WriteMsg(when time.Time, msg string, level int) error {
+// func (lg *StoreMsg) WriteMsg(when time.Time, msg string, level int) error {
 //	m := when.Format("2006-01-02 15:04:05") + " " + msg + "\r\n"
 //	if len(logMsgs) > MaxMsgLen {
 //		start := MaxMsgLen - len(m)
@@ -33,12 +33,12 @@ package common
 //	}
 //	logMsgs += m
 //	return nil
-//}
+// }
 //
-//func (lg *StoreMsg) Destroy() {
+// func (lg *StoreMsg) Destroy() {
 //	return
-//}
+// }
 //
-//func (lg *StoreMsg) Flush() {
+// func (lg *StoreMsg) Flush() {
 //	return
-//}
+// }

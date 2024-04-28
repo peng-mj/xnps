@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"xnps/lib/common"
+	"tunpx/lib/common"
 )
 
 func InitDaemon(f string, runPath string, pidPath string) {
@@ -47,7 +47,7 @@ func InitDaemon(f string, runPath string, pidPath string) {
 }
 
 func reload(f string, pidPath string) {
-	if f == "xnps" && !common.IsWindows() && !status(f, pidPath) {
+	if f == "tunpxs" && !common.IsWindows() && !status(f, pidPath) {
 		log.Println("reload fail")
 		return
 	}

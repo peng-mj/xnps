@@ -361,7 +361,7 @@ func TestNewMux2(t *testing.T) {
 		m1 := NewMux(conn1, "tcp", 60)
 		tmpCpnn, err := m1.NewConn()
 		if err != nil {
-			log.Println("xnps new conn err ", err)
+			log.Println("tunpxs new conn err ", err)
 			return
 		}
 		buf := make([]byte, 1024*1024)
@@ -392,36 +392,36 @@ func TestNewMux(t *testing.T) {
 	go func() {
 		m2 := NewMux(conn2, "tcp", 60)
 		for {
-			//log.Println("npc starting accept")
+			// log.Println("tunpxc starting accept")
 			c, err := m2.Accept()
 			if err != nil {
 				log.Println(err)
 				continue
 			}
-			//log.Println("npc accept success ")
+			// log.Println("tunpxc accept success ")
 			c2, err := net.Dial("tcp", "127.0.0.1:80")
 			if err != nil {
 				log.Println(err)
 				_ = c.Close()
 				continue
 			}
-			//c2.(*net.TCPConn).SetReadBuffer(0)
-			//c2.(*net.TCPConn).SetReadBuffer(0)
+			// c2.(*net.TCPConn).SetReadBuffer(0)
+			// c2.(*net.TCPConn).SetReadBuffer(0)
 			go func(c2 net.Conn, c *conn) {
 				go func() {
 					buf := make([]byte, 32<<10)
 					_, err = io.CopyBuffer(c2, c, buf)
-					//if err != nil {
-					//	log.Println("close npc by copy from xnps", err, c.connId)
-					//}
+					// if err != nil {
+					//	log.Println("close tunpxc by copy from tunpxs", err, c.connId)
+					// }
 					_ = c2.Close()
 					_ = c.Close()
 				}()
 				buf := make([]byte, 32<<10)
 				_, err = io.CopyBuffer(c, c2, buf)
-				//if err != nil {
-				//	log.Println("close npc by copy from server", err, c.connId)
-				//}
+				// if err != nil {
+				//	log.Println("close tunpxc by copy from server", err, c.connId)
+				// }
 				_ = c2.Close()
 				_ = c.Close()
 			}(c2, c.(*conn))
@@ -435,49 +435,49 @@ func TestNewMux(t *testing.T) {
 			log.Println(err)
 		}
 		for {
-			//log.Println("xnps starting accept")
+			// log.Println("tunpxs starting accept")
 			conns, err := l.Accept()
 			if err != nil {
 				log.Println(err)
 				continue
 			}
-			//conns.(*net.TCPConn).SetReadBuffer(0)
-			//conns.(*net.TCPConn).SetReadBuffer(0)
-			//log.Println("xnps accept success starting New conn")
+			// conns.(*net.TCPConn).SetReadBuffer(0)
+			// conns.(*net.TCPConn).SetReadBuffer(0)
+			// log.Println("tunpxs accept success starting New conn")
 			tmpCpnn, err := m1.NewConn()
 			if err != nil {
-				log.Println("xnps New conn err ", err)
+				log.Println("tunpxs New conn err ", err)
 				continue
 			}
-			//logs.Warn("xnps New conn success ", tmpCpnn.connId)
+			// logs.Warn("tunpxs New conn success ", tmpCpnn.connId)
 			go func(tmpCpnn *conn, conns net.Conn) {
 				go func() {
 					buf := make([]byte, 32<<10)
 					_, _ = io.CopyBuffer(tmpCpnn, conns, buf)
-					//if err != nil {
-					//	log.Println("close xnps by copy from user", tmpCpnn.connId, err)
-					//}
+					// if err != nil {
+					//	log.Println("close tunpxs by copy from user", tmpCpnn.connId, err)
+					// }
 					_ = conns.Close()
 					_ = tmpCpnn.Close()
 				}()
 				time.Sleep(time.Second)
 				buf := make([]byte, 32<<10)
 				_, err = io.CopyBuffer(conns, tmpCpnn, buf)
-				//if err != nil {
-				//	log.Println("close xnps by copy from npc ", tmpCpnn.connId, err)
-				//}
+				// if err != nil {
+				//	log.Println("close tunpxs by copy from tunpxc ", tmpCpnn.connId, err)
+				// }
 				_ = conns.Close()
 				_ = tmpCpnn.Close()
 			}(tmpCpnn, conns)
 		}
 	}()
 
-	//go NewLogServer()
+	// go NewLogServer()
 	time.Sleep(time.Second * 5)
-	//for i := 0; i < 1; i++ {
+	// for i := 0; i < 1; i++ {
 	//	go test_raw(i)
-	//}
-	//test_request()
+	// }
+	// test_request()
 
 	for {
 		time.Sleep(time.Second * 5)
@@ -534,7 +534,7 @@ Connection: keep-alive
 			break
 		}
 		fmt.Println(string(b[:20]), err)
-		//time.Sleep(time.Second)
+		// time.Sleep(time.Second)
 	}
 	log.Println("finish")
 }
@@ -555,13 +555,13 @@ Host: 127.0.0.1:7777
 		tiw := time.Now()
 		buf := make([]byte, 3572)
 		n, err := io.ReadFull(conn, buf)
-		//n, err := conn.Read(buf)
+		// n, err := conn.Read(buf)
 		if err != nil {
 			log.Println("close by read response err", err)
 			break
 		}
 		log.Println(n, string(buf[:50]), "\n--------------\n", string(buf[n-50:n]))
-		//time.Sleep(time.Second)
+		// time.Sleep(time.Second)
 		err = conn.Close()
 		if err != nil {
 			log.Println("close conn err ", err)
@@ -583,10 +583,10 @@ Host: 127.0.0.1:7777
 func TestNewConn(t *testing.T) {
 	buf := make([]byte, 1024)
 	log.Println(len(buf), cap(buf))
-	//b := pool.GetBufPoolCopy()
-	//b[0] = 1
-	//b[1] = 2
-	//b[2] = 3
+	// b := pool.GetBufPoolCopy()
+	// b[0] = 1
+	// b[1] = 2
+	// b[2] = 3
 	b := []byte{1, 2, 3}
 	log.Println(copy(buf[:3], b), len(buf), cap(buf))
 	log.Println(len(buf), buf[0])
@@ -626,10 +626,10 @@ func TestChain(t *testing.T) {
 			str := (*string)(unsa)
 			if ok {
 				fmt.Println(i, str, *str, ok)
-				//logs.Warn(i, str, *str, ok)
+				// logs.Warn(i, str, *str, ok)
 			} else {
 				fmt.Println("nil", i, ok)
-				//logs.Warn("nil", i, ok)
+				// logs.Warn("nil", i, ok)
 			}
 		}
 	}()
@@ -640,7 +640,7 @@ func TestChain(t *testing.T) {
 				for n := 0; n < 10; n++ {
 					data := "web_test " + strconv.Itoa(i) + strconv.Itoa(n)
 					fmt.Println(data, unsafe.Pointer(&data))
-					//logs.Warn(data, unsafe.Pointer(&data))
+					// logs.Warn(data, unsafe.Pointer(&data))
 					d.pushHead(unsafe.Pointer(&data))
 				}
 			}(i)
@@ -649,7 +649,7 @@ func TestChain(t *testing.T) {
 	time.Sleep(time.Second * 100000)
 }
 
-//func TestReceive(t *testing.T) {
+// func TestReceive(t *testing.T) {
 //	go func() {
 //		log.Println(http.ListenAndServe("0.0.0.0:8889", nil))
 //	}()
@@ -700,4 +700,4 @@ func TestChain(t *testing.T) {
 //		}
 //	}()
 //	time.Sleep(time.Second * 100000)
-//}
+// }

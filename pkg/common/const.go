@@ -3,7 +3,7 @@ package common
 import "net/http"
 
 const (
-	CONN_DATA_SEQ = "*#*" //Separator
+	CONN_DATA_SEQ = "*#*" // Separator
 
 	UnauthorizedBytes = `HTTP/1.1 401 Unauthorized
 Content-Type: text/plain; charset=utf-8
@@ -29,7 +29,7 @@ func (m CodeEnum) String() string {
 		return res
 	}
 	switch m {
-	//连接参数
+	// 连接参数
 	case 0:
 		return "close"
 	case 1:
@@ -59,7 +59,7 @@ func (m CodeEnum) String() string {
 		return "kcp"
 	case 13:
 		return "p2p"
-	//连接类型（加密）
+	// 连接类型（加密）
 	case 20:
 		return "s-tcp"
 	case 21:

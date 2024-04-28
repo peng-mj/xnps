@@ -13,8 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"xnps/lib/common"
+	"tunpx/pkg/common"
 )
 
 const (
@@ -70,7 +69,7 @@ func (pMux *PortMux) Start() error {
 			conn, err := pMux.Listener.Accept()
 			if err != nil {
 				slog.Warn("复用端口", "error", err)
-				//close
+				// close
 				pMux.Close()
 			}
 			go pMux.process(conn)
@@ -91,7 +90,7 @@ func (pMux *PortMux) process(conn net.Conn) {
 	var buffer bytes.Buffer
 	var readMore = false
 	switch common.BytesToNum(buf) {
-	case HTTP_CONNECT, HTTP_DELETE, HTTP_GET, HTTP_HEAD, HTTP_OPTIONS, HTTP_POST, HTTP_PUT, HTTP_TRACE: //http and manager
+	case HTTP_CONNECT, HTTP_DELETE, HTTP_GET, HTTP_HEAD, HTTP_OPTIONS, HTTP_POST, HTTP_PUT, HTTP_TRACE: // http and manager
 		buffer.Reset()
 		r := bufio.NewReader(conn)
 		buffer.Write(buf)

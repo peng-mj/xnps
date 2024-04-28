@@ -2,9 +2,9 @@ package service
 
 import (
 	"errors"
-	"xnps/pkg/crypt"
-	"xnps/pkg/models"
-	"xnps/web/dto"
+	"tunpx/pkg/crypt"
+	"tunpx/pkg/models"
+	"tunpx/web/dto"
 )
 
 type AuthUser struct {
@@ -25,13 +25,13 @@ func (s *AuthUser) CheckPasswd(auth *dto.LoginReq) (user *models.AuthUser, code 
 	var otpCOde, passwd string
 	if user.OTAEnable {
 		if len(auth.OtpCode) != 6 {
-			//return errors.New("need otp code")
+			// return errors.New("need otp code")
 			return nil, dto.RspCode(dto.NeedOtpCode)
 
 		}
-		//TODO: design a otp login
+		// TODO: design a otp login
 		//	get otp code
-		//otpCOde={otp code}
+		// otpCOde={otp code}
 		passwd = crypt.Sha256(auth.Username + "." + user.Password + "." + otpCOde)
 	} else {
 		passwd = crypt.Sha256(auth.Username + "." + user.Password)
@@ -54,6 +54,7 @@ func (s *AuthUser) GetAllUser() (user []models.AuthUser) {
 	s.Orm(models.AuthUser{}).Find(&user)
 	return
 }
-func (s *AuthUser) Create(user models.AuthUser) {
-
+func (s *AuthUser) Create(user *models.AuthUser) error {
+	err := s.Orm(models.AuthUser{}).Create(user).Error
+	return err
 }

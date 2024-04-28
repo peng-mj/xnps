@@ -17,9 +17,9 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"xnps/lib/version"
+	"tunpx/lib/version"
 
-	"xnps/lib/crypt"
+	"tunpx/lib/crypt"
 )
 
 // Get the corresponding IP address through domain name
@@ -291,12 +291,12 @@ func in(target string, str_array []string) bool {
 // 判断访问地址是否在黑名单内
 func IsBlackIp(ipPort, vkey string) bool {
 	return false
-	//ip := GetIpByAddr(ipPort)
-	//if in(ip, blackIpList) {
+	// ip := GetIpByAddr(ipPort)
+	// if in(ip, blackIpList) {
 	//	logs.Error("IP地址[" + ip + "]在隧道[" + vkey + "]黑名单列表内")
 	//	return true
-	//}
-	//return false
+	// }
+	// return false
 }
 
 // TODO:重构，防火墙
@@ -349,7 +349,7 @@ func GetLocalUdpAddr() (net.Conn, error) {
 
 // parse template
 func ParseStr(str string) (string, error) {
-	tmp := template.New("npc")
+	tmp := template.New("tunpxc")
 	var err error
 	w := new(bytes.Buffer)
 	if tmp, err = tmp.Parse(str); err != nil {

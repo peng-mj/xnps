@@ -114,9 +114,9 @@ func (tc *TrafficControl) RunNetRangeTest(f func()) error {
 	for _, v := range groups {
 		tc.del()
 		// execute bandwidth control, not good work
-		//if err := tc.bandwidth("1mbit"); err != nil {
+		// if err := tc.bandwidth("1mbit"); err != nil {
 		//	return err
-		//}
+		// }
 		// execute random strategy
 		for _, vv := range v {
 			vv()

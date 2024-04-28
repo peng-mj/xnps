@@ -1,12 +1,12 @@
 package service
 
 import (
-	"xnps/pkg/database"
+	"tunpx/pkg/database"
 )
 
 type Base struct {
 	*database.Driver
-	//kv  *cache.Cache
+	// kv  *cache.Cache
 }
 
 func (b *Base) Service(db *database.Driver) *Base {

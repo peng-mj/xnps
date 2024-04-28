@@ -15,14 +15,14 @@ import (
 	"strings"
 	"sync"
 	"time"
-	models2 "xnps/lib/database/models"
-	"xnps/lib/goroutine"
+	models2 "tunpx/lib/database/models"
+	"tunpx/lib/goroutine"
 
 	"github.com/xtaci/kcp-go"
-	"xnps/lib/common"
-	"xnps/lib/crypt"
-	"xnps/lib/pmux"
-	"xnps/lib/rate"
+	"tunpx/lib/common"
+	"tunpx/lib/crypt"
+	"tunpx/lib/pmux"
+	"tunpx/lib/rate"
 )
 
 type Conn struct {
@@ -147,8 +147,8 @@ func (s *Conn) SetAlive(tp string) {
 	case *net.TCPConn:
 		conn := s.Conn.(*net.TCPConn)
 		conn.SetReadDeadline(time.Time{})
-		//conn.SetKeepAlive(false)
-		//conn.SetKeepAlivePeriod(time.Duration(2 * time.Second))
+		// conn.SetKeepAlive(false)
+		// conn.SetKeepAlivePeriod(time.Duration(2 * time.Second))
 	case *pmux.PortConn:
 		s.Conn.(*pmux.PortConn).SetReadDeadline(time.Time{})
 	}
@@ -204,24 +204,24 @@ func (s *Conn) GetConfigInfo() (c *models2.Client, err error) {
 	c.Valid = true
 	c.Connected = true
 
-	//c.NoDisplay = false
+	// c.NoDisplay = false
 	return
 }
 
 // get task info
 // get task info
 func (s *Conn) GetTunnelInfo() (t *models2.Tunnel, err error) {
-	//t = new(file.Tunnel)
+	// t = new(file.Tunnel)
 	err = s.getInfo(&t)
-	//t.Id = database.GetDb().JsonDb.GetTaskId()
-	//t.NoStore = true
+	// t.Id = database.GetDb().JsonDb.GetTaskId()
+	// t.NoStore = true
 	t.Flow = new(models2.Flow)
 	t.Target = new(models2.Target)
-	//TODO:这里判断白名单端口
-	//t.Target.TargetStr = beego.AppConfig.String("allow_ports")
-	//if len(t.Target.TargetStr) < 2 {
+	// TODO:这里判断白名单端口
+	// t.Target.TargetStr = beego.AppConfig.String("allow_ports")
+	// if len(t.Target.TargetStr) < 2 {
 	//	t.Target.TargetStr = "81-65535"
-	//}
+	// }
 	return
 }
 
@@ -261,7 +261,7 @@ func (s *Conn) getInfo(t interface{}) (err error) {
 	} else if _, err = s.ReadLen(l, buf); err != nil {
 		return
 	} else {
-		//客户端向服务端发送的信息，使用的是json格式
+		// 客户端向服务端发送的信息，使用的是json格式
 		json.Unmarshal(buf[:l], &t)
 	}
 	return
@@ -280,7 +280,7 @@ func (s *Conn) Write(b []byte) (int, error) {
 // read
 func (s *Conn) Read(b []byte) (n int, err error) {
 	if s.Rb != nil {
-		//if the rb is not nil ,read rb first
+		// if the rb is not nil ,read rb first
 		if len(s.Rb) > 0 {
 			n = copy(b, s.Rb)
 			s.Rb = s.Rb[n:]
@@ -374,8 +374,8 @@ func SetUdpSession(sess *kcp.UDPSession) {
 
 // conn1 mux conn
 func CopyWaitGroup(conn1, conn2 net.Conn, encrypt bool, snappy bool, rate *rate.Rate, isServer bool, rb []byte, task *models2.Tunnel) {
-	//var in, out int64
-	//var wg sync.WaitGroup
+	// var in, out int64
+	// var wg sync.WaitGroup
 	connHandle := GetConn(conn1, encrypt, snappy, rate, isServer)
 	if rb != nil {
 		connHandle.Write(rb)

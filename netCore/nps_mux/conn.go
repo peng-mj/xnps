@@ -371,7 +371,7 @@ func (Self *receiveWindow) sendStatus(id int32, l uint16) {
 				}
 			}
 		} else {
-			//overflow
+			// overflow
 			if atomic.CompareAndSwapUint64(&Self.maxSizeDone, ptrs, Self.pack(maxSize, uint32(l), wait)) {
 				// reset to l
 				Self.mux.sendInfo(muxMsgSendOk, id, Self.pack(maxSize, read, false))
@@ -401,12 +401,12 @@ func (Self *receiveWindow) CloseWindow() {
 }
 
 func (Self *receiveWindow) release() {
-	//if Self.element != nil {
+	// if Self.element != nil {
 	//	if Self.element.Buf != nil {
 	//		common.WindowBuff.Put(Self.element.Buf)
 	//	}
 	//	common.ListElementPool.Put(Self.element)
-	//}
+	// }
 	for {
 		ele := Self.bufQueue.TryPop()
 		if ele == nil {
@@ -482,7 +482,7 @@ func (Self *sendWindow) SetSize(currentMaxSizeDone uint64) (closed bool) {
 		}
 		// remain > 0, change wait to false. or remain == 0, wait is false, just keep it
 		if atomic.CompareAndSwapUint64(&Self.maxSizeDone, ptrs, Self.pack(currentMaxSize, send, newWait)) {
-			//log.Printf("currentMaxSize:%d read:%d send:%d", currentMaxSize, read, send)
+			// log.Printf("currentMaxSize:%d read:%d send:%d", currentMaxSize, read, send)
 			break
 		}
 		// anther goroutine change wait status or window size
@@ -555,7 +555,7 @@ start:
 		return nil, 0, false, io.EOF
 	}
 
-	//logs.Info("Self  size:", len(Self.buf), "Self.off " ,Self.off)
+	// logs.Info("Self  size:", len(Self.buf), "Self.off " ,Self.off)
 	// there are still remaining window
 	if len(Self.buf[Self.off:]) > maximumSegmentSize {
 		sendSize = maximumSegmentSize
@@ -573,7 +573,7 @@ start:
 	p = Self.buf[Self.off : sendSize+Self.off]
 	Self.off += sendSize
 	Self.sent(sendSize)
-	//logs.Info("sendSize", sendSize, "Self.off " ,Self.off)
+	// logs.Info("sendSize", sendSize, "Self.off " ,Self.off)
 	return
 }
 

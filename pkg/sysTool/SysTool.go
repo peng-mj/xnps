@@ -2,9 +2,6 @@ package sysTool
 
 import (
 	"encoding/base64"
-	"errors"
-	"fmt"
-	"net"
 	"os"
 )
 
@@ -47,21 +44,7 @@ func CreateFolder(dir string) {
 	return
 }
 
-func SaveImageFromBase64(filename, path, base64Data string) (length int, err error) {
-	var tempData []byte
-	if tempData, err = base64.StdEncoding.DecodeString(base64Data); err != nil {
-		return
-	}
-	var outputFile *os.File
-	if outputFile, err = os.Create(path + filename); err != nil {
-		return
-	} else {
-		defer outputFile.Close()
-	}
-	length, err = outputFile.Write(tempData)
-	return
-}
-func SaveBase64Img(filePath, base64Data string) (length int, err error) {
+func SaveBase64File(filePath, base64Data string) (length int, err error) {
 	var tempData []byte
 	if tempData, err = base64.StdEncoding.DecodeString(base64Data); err != nil {
 		return
@@ -82,19 +65,4 @@ func EncodeBase64File(imagePath string) (string, error) {
 	} else {
 		return "", err
 	}
-}
-
-// CheckPortOccupied to check net port
-func CheckPortOccupied(port int, protocol string) error {
-	switch protocol {
-	case "tcp":
-	case "udp":
-	default:
-		return errors.New("not support " + protocol)
-	}
-	_, err := net.Listen(protocol, fmt.Sprintf(":%d", port))
-	if err != nil {
-		return err
-	}
-	return nil
 }

@@ -6,9 +6,9 @@ import (
 	"golang.org/x/exp/slog"
 	"net/http"
 	"time"
-	"xnps/pkg/database"
-	"xnps/web/api"
-	"xnps/web/service"
+	"tunpx/pkg/database"
+	"tunpx/web/api"
+	"tunpx/web/service"
 )
 
 type Server struct {
@@ -41,7 +41,11 @@ func (w *Server) InitSys(host string) (err error) {
 	system := api.NewSystem(w.kit)
 	w.engin.GET("/static/system/init", system.StaticInit).
 		GET("/static/system/success", system.StaticSuccess).
-		POST("/api/system", system.Init)
+		POST("/api/system", system.Init, func(ctx *gin.Context) {
+			if !ctx.IsAborted() {
+				w.Close()
+			}
+		})
 
 	sev := http.Server{Addr: host, Handler: w.engin}
 	go func() {
@@ -72,14 +76,14 @@ func (w *Server) Start(host string, db *database.Driver) {
 	w.kit = w.kit.Service(db)
 	middle := NewMiddle(w.kit)
 
-	xnps := w.engin.Group("/api/xnps")
+	xnps := w.engin.Group("/api/tunpxs")
 	xnps.GET("/ping", middle.RateLimitMiddle(time.Second, 100, 10), api.Ping).
 		POST("/login", middle.RateLimitMiddle(time.Second, 100, 10), middle.Login)
-	//user
+	// user
 	userApi := api.NewUser(w.kit)
 	userGroup := xnps.Group("/user", middle.AuthMiddle, middle.GetUser)
 	userGroup.GET("/all", userApi.GetAllUser)
-	//group
+	// group
 	groupApi := api.NewGroup(w.kit)
 	group := xnps.Group("/group").Use(middle.AuthMiddle, middle.GetUser)
 	group.GET("/all", groupApi.GetAll).

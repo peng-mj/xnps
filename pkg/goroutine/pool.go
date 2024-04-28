@@ -7,8 +7,8 @@ import (
 	"net"
 	"strings"
 	"sync"
-	"xnps/lib/common"
-	models2 "xnps/lib/database/models"
+	"tunpx/lib/common"
+	models2 "tunpx/lib/database/models"
 )
 
 type connGroup struct {
@@ -42,9 +42,9 @@ func CopyBuffer(dst io.Writer, src io.Reader, flow *models2.Flow, task *models2.
 		}
 		nr, er := src.Read(buf)
 
-		//if len(pr)>0 && pr[0] && nr > 50 {
+		// if len(pr)>0 && pr[0] && nr > 50 {
 		//	logs.Warn(string(buf[:50]))
-		//}
+		// }
 
 		if task != nil {
 			task.IsHttp = false
@@ -67,7 +67,7 @@ func CopyBuffer(dst io.Writer, src io.Reader, flow *models2.Flow, task *models2.
 		if nr > 0 {
 			nw, ew := dst.Write(buf[0:nr])
 			if nw > 0 {
-				//written += int64(nw)
+				// written += int64(nw)
 				if flow != nil {
 					flow.Add(int64(nw), int64(nw))
 					// <<20 = 1024 * 1024
@@ -92,12 +92,12 @@ func CopyBuffer(dst io.Writer, src io.Reader, flow *models2.Flow, task *models2.
 			break
 		}
 	}
-	//return written, err
+	// return written, err
 	return err
 }
 
 func copyConnGroup(group interface{}) {
-	//logs.Info("copyConnGroup.........")
+	// logs.Info("copyConnGroup.........")
 	cg, ok := group.(connGroup)
 	if !ok {
 		return
@@ -107,12 +107,12 @@ func copyConnGroup(group interface{}) {
 	if err != nil {
 		cg.src.Close()
 		cg.dst.Close()
-		//logs.Warn("close npc by copy from xnps", err, c.connId)
+		// logs.Warn("close tunpxc by copy from tunpxs", err, c.connId)
 	}
 
-	//if conns.flow != nil {
+	// if conns.flow != nil {
 	//	conns.flow.Add(in, out)
-	//}
+	// }
 	cg.wg.Done()
 }
 
@@ -135,7 +135,7 @@ func NewConns(c1 io.ReadWriteCloser, c2 net.Conn, flow *models2.Flow, wg *sync.W
 }
 
 func copyConns(group interface{}) {
-	//logs.Info("copyConns.........")
+	// logs.Info("copyConns.........")
 	conns := group.(Conns)
 	wg := new(sync.WaitGroup)
 	wg.Add(2)
@@ -146,9 +146,9 @@ func copyConns(group interface{}) {
 	_ = connCopyPool.Invoke(newConnGroup(conns.conn2, conns.conn1, wg, &out, conns.flow, conns.task, remoteAddr))
 	// mux to outside : outgoing
 	wg.Wait()
-	//if conns.flow != nil {
+	// if conns.flow != nil {
 	//	conns.flow.Add(in, out)
-	//}
+	// }
 	conns.wg.Done()
 }
 

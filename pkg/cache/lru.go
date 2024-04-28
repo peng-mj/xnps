@@ -11,10 +11,10 @@ type Cache struct {
 	// an item is evicted. Zero means no limit.
 	MaxEntries int
 
-	//Execute this callback function when an element is culled
+	// Execute this callback function when an element is culled
 	OnEvicted func(key Key, value interface{})
 
-	ll    *list.List //list
+	ll    *list.List // list
 	cache sync.Map
 }
 
@@ -33,7 +33,7 @@ func New(maxEntries int) *Cache {
 	return &Cache{
 		MaxEntries: maxEntries,
 		ll:         list.New(),
-		//cache:      make(map[interface{}]*list.Element),
+		// cache:      make(map[interface{}]*list.Element),
 	}
 }
 
@@ -61,7 +61,7 @@ func (c *Cache) Get(key Key) (value interface{}, ok bool) {
 }
 func (c *Cache) GetString(key Key) (value string, ok bool) {
 	v, ok := c.Get(key)
-	//slog.Info("get key", v)
+	// slog.Info("get key", v)
 	if ok {
 		value, ok = v.(string)
 	}

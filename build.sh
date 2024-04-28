@@ -114,45 +114,45 @@ cd bin/
 {
 
   if [ -f "xnps_linux_amd64" ]; then
-    mv xnps_linux_amd64 xnps
-    tar -czvf ./xnps_linux_amd64.tar.gz conf/nps.conf conf/tasks.json conf/clients.json conf/hosts.json conf/server.key conf/server.pem web/views web/static xnps
+    mv xnps_linux_amd64 tunpxs
+    tar -czvf ./xnps_linux_amd64.tar.gz conf/nps.conf conf/tasks.json conf/clients.json conf/hosts.json conf/server.key conf/server.pem web/views web/static tunpxs
   fi
 
   if [ -f "xnps_linux_386" ]; then
-    mv xnps_linux_amd64 xnps
-    tar -czvf ./xnps_linux_386.tar.gz conf/nps.conf conf/tasks.json conf/clients.json conf/hosts.json conf/server.key conf/server.pem web/views web/static xnps
+    mv xnps_linux_amd64 tunpxs
+    tar -czvf ./xnps_linux_386.tar.gz conf/nps.conf conf/tasks.json conf/clients.json conf/hosts.json conf/server.key conf/server.pem web/views web/static tunpxs
   fi
 
   if [ -f "xnps_freebsd_386" ]; then
-    mv xnps_linux_amd64 xnps
-    tar -czvf ./xnps_freebsd_386.tar.gz conf/nps.conf conf/tasks.json conf/clients.json conf/hosts.json conf/server.key conf/server.pem web/views web/static xnps
+    mv xnps_linux_amd64 tunpxs
+    tar -czvf ./xnps_freebsd_386.tar.gz conf/nps.conf conf/tasks.json conf/clients.json conf/hosts.json conf/server.key conf/server.pem web/views web/static tunpxs
   fi
 
   if [ -f "xnps_freebsd_amd64" ]; then
-    mv xnps_linux_amd64 xnps
-    tar -czvf ./xnps_freebsd_amd64.tar.gz conf/nps.conf conf/tasks.json conf/clients.json conf/hosts.json conf/server.key conf/server.pem web/views web/static xnps
+    mv xnps_linux_amd64 tunpxs
+    tar -czvf ./xnps_freebsd_amd64.tar.gz conf/nps.conf conf/tasks.json conf/clients.json conf/hosts.json conf/server.key conf/server.pem web/views web/static tunpxs
   fi
 
   if [ -f "xnps_darwin_amd64" ]; then
-    mv xnps_linux_amd64 xnps
-    tar -czvf ./xnps_darwin_amd64.tar.gz conf/nps.conf conf/tasks.json conf/clients.json conf/hosts.json conf/server.key conf/server.pem web/views web/static xnps
+    mv xnps_linux_amd64 tunpxs
+    tar -czvf ./xnps_darwin_amd64.tar.gz conf/nps.conf conf/tasks.json conf/clients.json conf/hosts.json conf/server.key conf/server.pem web/views web/static tunpxs
   fi
 
   if [ -f "xnps_darwin_arm64" ]; then
-    mv xnps_linux_amd64 xnps
-    tar -czvf ./xnps_darwin_arm64.tar.gz conf/nps.conf conf/tasks.json conf/clients.json conf/hosts.json conf/server.key conf/server.pem web/views web/static xnps
+    mv xnps_linux_amd64 tunpxs
+    tar -czvf ./xnps_darwin_arm64.tar.gz conf/nps.conf conf/tasks.json conf/clients.json conf/hosts.json conf/server.key conf/server.pem web/views web/static tunpxs
   fi
 
   if [ -f "xnps_windows_amd64.exe" ]; then
     mv "xnps_linux_amd64.exe" "xnps.exe"
-    tar -czvf ./xnps_windows_amd64.tar.gz conf/nps.conf conf/tasks.json conf/clients.json conf/hosts.json conf/server.key conf/server.pem web/views web/static xnps.exe
+    tar -czvf ./xnps_windows_amd64.tar.gz conf/nps.conf conf/tasks.json conf/clients.json conf/hosts.json conf/server.key conf/server.pem web/views web/static tunpxs.exe
   fi
 
   if [ -f "xnps_windows_386.exe" ]; then
     mv "xnps_linux_amd64.exe" "xnps.exe"
-    tar -czvf ./xnps_windows_386.tar.gz conf/nps.conf conf/tasks.json conf/clients.json conf/hosts.json conf/server.key conf/server.pem web/views web/static xnps.exe
+    tar -czvf ./xnps_windows_386.tar.gz conf/nps.conf conf/tasks.json conf/clients.json conf/hosts.json conf/server.key conf/server.pem web/views web/static tunpxs.exe
   fi
-  rm -r xnps xnps.exe
+  rm -r tunpxs tunpxs.exe
 } &
 
 {

@@ -37,13 +37,13 @@
             xhr.send(formDataJSON);
 
             // 处理响应
-            xhr.onreadystatechange = function() {
+            xhr.onreadystatechange = function () {
                 if (xhr.readyState === 4) {
                     if (xhr.status === 200) {
                         // 请求成功
                         document.getElementById('status').innerText = '请求成功，正在跳转...';
                         // 延迟跳转
-                        setTimeout(function() {
+                        setTimeout(function () {
                             window.location.href = '/hellowoord';
                         }, 1000);
                     } else {
@@ -65,53 +65,53 @@
 <form onsubmit="submitForm(); return false;">
     <div>
         <label for="username">用户名:</label>
-        <input type="text" id="username" name="username" required>
+        <input id="username" name="username" required type="text">
     </div>
     <div>
         <label for="password">密码:</label>
-        <input type="password" id="password" name="password" required>
+        <input id="password" name="password" required type="password">
     </div>
     <div>
         <label for="email">邮箱:</label>
-        <input type="email" id="email" name="email" required>
+        <input id="email" name="email" required type="email">
     </div>
     <div>
         <label for="configPath">配置文件路径:</label>
-        <input type="text" id="configPath" name="configPath" required>
+        <input id="configPath" name="configPath" required type="text">
     </div>
     <div>
         <label for="systemPort">系统运行端口:</label>
-        <input type="number" id="systemPort" name="systemPort" required>
+        <input id="systemPort" name="systemPort" required type="number">
     </div>
     <div>
         <label for="servicePort">服务运行端口:</label>
-        <input type="number" id="servicePort" name="servicePort" required>
+        <input id="servicePort" name="servicePort" required type="number">
     </div>
     <div>
         <label>
-            <input type="checkbox" id="enableOTP" name="enableOTP"> 是否开启OTP
+            <input id="enableOTP" name="enableOTP" type="checkbox"> 是否开启OTP
         </label>
     </div>
     <div>
         <label for="openPortsRange">允许的开放端口范围:</label>
-        <input type="text" id="openPortsRange" name="openPortsRange" required>
+        <input id="openPortsRange" name="openPortsRange" required type="text">
     </div>
     <div>
         <label for="logPath">日志存放路径:</label>
-        <input type="text" id="logPath" name="logPath" required>
+        <input id="logPath" name="logPath" required type="text">
     </div>
     <div>
         <label for="maxDevices">最大设备数:</label>
-        <input type="number" id="maxDevices" name="maxDevices" required>
+        <input id="maxDevices" name="maxDevices" required type="number">
     </div>
     <div>
         <label>
-            <input type="checkbox" id="enableEmailAlerts" name="enableEmailAlerts"> 是否开启邮件提醒
+            <input id="enableEmailAlerts" name="enableEmailAlerts" type="checkbox"> 是否开启邮件提醒
         </label>
     </div>
     <div>
         <label for="authCode">授权码:</label>
-        <input type="text" id="authCode" name="authCode" required>
+        <input id="authCode" name="authCode" required type="text">
     </div>
     <div>
         <button type="submit">提交</button>
@@ -119,4 +119,5 @@
     </div>
 </form>
 
-</body> </html>
+</body>
+</html>

@@ -5,19 +5,19 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"xnps/lib/sysTool"
+	"tunpx/pkg/sysTool"
 )
 
 var ConfPath string
 
 // Get the currently selected configuration file directory
-// For non-Windows systems, select the /etc/xnps as config directory if exist, or select ./
-// windows system, select the C:\Program Files\xnps as config directory if exist, or select ./
+// For non-Windows systems, select the /etc/tunpxs as config directory if exist, or select ./
+// windows system, select the C:\Program Files\tunpxs as config directory if exist, or select ./
 func GetRunPath() string {
 	var path string
 	if len(os.Args) == 1 {
 		if !IsWindows() {
-			dir, _ := filepath.Abs(filepath.Dir(os.Args[0])) //返回
+			dir, _ := filepath.Abs(filepath.Dir(os.Args[0])) // 返回
 			return dir + "/"
 		} else {
 			return "./"
@@ -41,7 +41,7 @@ func GetInstallPath() string {
 	if IsWindows() {
 		path = `C:\Program Files\nps`
 	} else {
-		path = "/etc/xnps"
+		path = "/etc/tunpx"
 	}
 
 	return path
@@ -67,20 +67,20 @@ func IsWindows() bool {
 func GetLogPath() string {
 	var path string
 	if IsWindows() {
-		path = filepath.Join(GetAppPath(), "xnps.log")
+		path = filepath.Join(GetAppPath(), "tunpxs.log")
 	} else {
-		path = "/var/log/xnps.log"
+		path = "/var/log/tunpx.log"
 	}
 	return path
 }
 
-// interface npc log file path
+// interface tunpxc log file path
 func GetNpcLogPath() string {
 	var path string
 	if IsWindows() {
-		path = filepath.Join(GetAppPath(), "npc.log")
+		path = filepath.Join(GetAppPath(), "tunpx.log")
 	} else {
-		path = "/var/log/npc.log"
+		path = "/var/log/tunpx.log"
 	}
 	return path
 }
@@ -99,29 +99,29 @@ func GetTmpPath() string {
 // config file path
 func GetConfigPath() (path string) {
 	if IsWindows() {
-		path = "conf/npc.conf"
+		path = "conf/tunpx.conf"
 		if sysTool.FileExisted(path) {
 			return
-		} else if path = filepath.Join(GetAppPath(), "conf/npc.conf"); sysTool.FileExisted(path) {
+		} else if path = filepath.Join(GetAppPath(), "conf/tunpx.conf"); sysTool.FileExisted(path) {
 			return
 		} else {
 			slog.Error("加载配置文件失败，请检查", "配置文件状态", "不存在")
 			os.Exit(0)
 		}
 	} else {
-		path = "conf/npc.conf"
+		path = "conf/tunpx.conf"
 		if sysTool.FileExisted(path) {
 			return
-		} else if path = "/etc/xnps/conf/npc.conf"; sysTool.FileExisted(path) {
+		} else if path = "/etc/tunpx/conf/tunpx.conf"; sysTool.FileExisted(path) {
 			return
-		} else if path = "~/.xnps/npc.conf"; sysTool.FileExisted(path) {
+		} else if path = "~/.tunpx/tunpx.conf"; sysTool.FileExisted(path) {
 			return
 		} else {
 
 		}
 		_, err := os.Lstat(path)
 		if err != nil {
-			path = "/etc/xnps/conf/npc.conf"
+			path = "/etc/tunpx/conf/tunpx.conf"
 		}
 	}
 	return

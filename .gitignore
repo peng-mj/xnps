@@ -1,17 +1,24 @@
-.vscode
-.idea
-./nps*
-./npc*
-cmd/web_test
-bin
-TEMP
+
+# files
+tunnet
 *.exe
 *.txt
 *.json
-.idea
-log
 *.bkp
 *.toml
+*.log
+*.ini
+*.sqlite
+
+# dir
+conf
+log
+bin
+TEMP
+.idea
+cmd/web_test
+.vscode
+
 
 
 

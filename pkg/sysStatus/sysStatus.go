@@ -73,6 +73,6 @@ func GetIPInfo() (remote, lan string) {
 	defer conn.Close()
 	RemoteAddr := conn.RemoteAddr().(*net.UDPAddr)
 	LanAddr := conn.LocalAddr().(*net.UDPAddr)
-	//fmt.Println(localAddr.String())
+	// fmt.Println(localAddr.String())
 	return RemoteAddr.IP.String(), LanAddr.IP.String()
 }

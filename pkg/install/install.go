@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"xnps/lib/common"
+	"tunpx/lib/common"
 
 	"github.com/c4milo/unpackit"
 )
@@ -137,13 +137,13 @@ WantedBy=multi-user.target
 
 func UpdateNps() {
 	destPath := downloadLatest("server")
-	copyStaticFile(destPath, "xnps")
+	copyStaticFile(destPath, "tunpxs")
 	fmt.Println("Update completed, please restart")
 }
 
 func UpdateNpc() {
 	destPath := downloadLatest("client")
-	copyStaticFile(destPath, "npc")
+	copyStaticFile(destPath, "tunpxc")
 	fmt.Println("Update completed, please restart")
 }
 
@@ -192,8 +192,8 @@ func downloadLatest(bin string) string {
 
 func copyStaticFile(srcPath, bin string) string {
 	path := common.GetInstallPath()
-	if bin == "xnps" {
-		//复制文件到对应目录
+	if bin == "tunpxs" {
+		// 复制文件到对应目录
 		if err := CopyDir(filepath.Join(srcPath, "web", "views"), filepath.Join(path, "web", "views")); err != nil {
 			log.Fatalln(err)
 		}
@@ -218,7 +218,7 @@ func copyStaticFile(srcPath, bin string) string {
 			chMod("/usr/bin/"+bin+"-update", 0755)
 			binPath = "/usr/bin/" + bin
 		}
-		//TODO:将配置文件复制到“/etc/xnps/conf/*”下
+		// TODO:将配置文件复制到“/etc/tunpxs/conf/*”下
 	} else {
 		copyFile(filepath.Join(srcPath, bin+".exe"), filepath.Join(common.GetAppPath(), bin+"-update.exe"))
 		copyFile(filepath.Join(srcPath, bin+".exe"), filepath.Join(common.GetAppPath(), bin+".exe"))
@@ -235,7 +235,7 @@ func InstallNpc() {
 			log.Fatal(err)
 		}
 	}
-	copyStaticFile(common.GetAppPath(), "npc")
+	copyStaticFile(common.GetAppPath(), "tunpxc")
 }
 
 func InstallNps() string {
@@ -252,17 +252,17 @@ func InstallNps() string {
 		}
 		chMod(filepath.Join(path, "conf"), 0766)
 	}
-	binPath := copyStaticFile(common.GetAppPath(), "xnps")
+	binPath := copyStaticFile(common.GetAppPath(), "tunpxs")
 	log.Println("install ok!")
 	log.Println("Static files and configuration files in the current directory will be useless")
 	log.Println("The new configuration file is located in", path, "you can edit them")
 	if !common.IsWindows() {
 		log.Println(`You can start with:
-xnps start|stop|restart|uninstall|update or xnps-update update
+tunpxs start|stop|restart|uninstall|update or tunpxs-update update
 anywhere!`)
 	} else {
 		log.Println(`You can copy executable files to any directory and start working with:
-xnps.exe start|stop|restart|uninstall|update or xnps-update.exe update
+tunpxs.exe start|stop|restart|uninstall|update or tunpxs-update.exe update
 now!`)
 	}
 	chMod(common.GetLogPath(), 0777)
@@ -277,7 +277,7 @@ func MkidrDirAll(path string, v ...string) {
 }
 
 func CopyDir(srcPath string, destPath string) error {
-	//检测目录正确性
+	// 检测目录正确性
 	if srcInfo, err := os.Stat(srcPath); err != nil {
 		fmt.Println(err.Error())
 		return err
@@ -319,10 +319,10 @@ func copyFile(src, dest string) (w int64, err error) {
 		return
 	}
 	defer srcFile.Close()
-	//分割path目录
+	// 分割path目录
 	destSplitPathDirs := strings.Split(dest, string(filepath.Separator))
 
-	//检测时候存在目录
+	// 检测时候存在目录
 	destSplitPath := ""
 	for index, dir := range destSplitPathDirs {
 		if index < len(destSplitPathDirs)-1 {
@@ -330,7 +330,7 @@ func copyFile(src, dest string) (w int64, err error) {
 			b, _ := pathExists(destSplitPath)
 			if b == false {
 				log.Println("mkdir:" + destSplitPath)
-				//创建目录
+				// 创建目录
 				err := os.Mkdir(destSplitPath, os.ModePerm)
 				if err != nil {
 					log.Fatalln(err)

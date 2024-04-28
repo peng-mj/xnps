@@ -10,7 +10,7 @@ import (
 	"syscall"
 
 	"github.com/astaxie/beego"
-	"xnps/lib/common"
+	"tunpx/lib/common"
 )
 
 func init() {
@@ -19,7 +19,7 @@ func init() {
 	go func() {
 		for {
 			<-s
-			beego.LoadAppConfig("ini", filepath.Join(common.GetRunPath(), "conf", "xnps.conf"))
+			beego.LoadAppConfig("ini", filepath.Join(common.GetRunPath(), "conf", "tunpxs.conf"))
 		}
 	}()
 }

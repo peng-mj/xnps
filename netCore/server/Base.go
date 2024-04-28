@@ -38,5 +38,5 @@ type Server struct {
 	ConnectMap  map[int]*Connection
 	ConnectPool []Connection
 	RwLock      sync.RWMutex
-	//mp          sync.Map
+	// mp          sync.Map
 }

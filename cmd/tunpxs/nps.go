@@ -12,10 +12,10 @@ import (
 	"runtime"
 	"strings"
 	"sync"
-	"xnps/pkg/common"
-	"xnps/pkg/daemon"
-	"xnps/pkg/install"
-	"xnps/pkg/sysTool"
+	"tunpx/pkg/common"
+	"tunpx/pkg/daemon"
+	"tunpx/pkg/install"
+	"tunpx/pkg/sysTool"
 )
 
 var (
@@ -43,7 +43,7 @@ func main() {
 		}
 	}
 
-	if err := beego.LoadAppConfig("ini", filepath.Join(common.GetRunPath(), "conf", "xnps.conf")); err != nil {
+	if err := beego.LoadAppConfig("ini", filepath.Join(common.GetRunPath(), "conf", "tunpxs.conf")); err != nil {
 		slog.Error("加载配置文件失败", "load config file error", err)
 	}
 
@@ -51,7 +51,7 @@ func main() {
 	if level = beego.AppConfig.String("log_level"); level == "" {
 		level = "7"
 	}
-	logPath := "./log/xnps.log"
+	logPath := "./log/tunpxs.log"
 	if !sysTool.DirExisted("./log") {
 		sysTool.CreateFolder("./log")
 	}
@@ -108,7 +108,7 @@ func main() {
 	if len(os.Args) > 1 && os.Args[1] != "service" {
 		switch os.Args[1] {
 		case "reload":
-			daemon.InitDaemon("xnps", common.GetRunPath(), common.GetTmpPath())
+			daemon.InitDaemon("tunpxs", common.GetRunPath(), common.GetTmpPath())
 			return
 		case "install":
 			// uninstall before
@@ -161,7 +161,7 @@ func main() {
 		case "update":
 			install.UpdateNps()
 			return
-			//default:
+			// default:
 			//	slog.Error("command is not support")
 			//	return
 		}
@@ -194,7 +194,7 @@ func (p *nps) run() error {
 			const size = 64 << 10
 			buf := make([]byte, size)
 			buf = buf[:runtime.Stack(buf, false)]
-			slog.Warn("xnps: panic serving", err, string(buf))
+			slog.Warn("tunpxs: panic serving", err, string(buf))
 		}
 	}()
 	run()
@@ -206,30 +206,30 @@ func (p *nps) run() error {
 }
 
 func run() {
-	//task := &models.Tunnel{
+	// task := &models.Tunnel{
 	//	Mode: "webServer",
-	//}
-	//bridgePort, err := beego.AppConfig.Int("bridge_port")
-	//if err != nil {
+	// }
+	// bridgePort, err := beego.AppConfig.Int("bridge_port")
+	// if err != nil {
 	//	slog.Error("Getting bridge_port error", err)
 	//	os.Exit(0)
-	//}
+	// }
 	//
-	//slog.Info("the config path is:" + common.GetRunPath())
-	//slog.Info("the version of server is %s ,allow client core version to be %s", version.VERSION, version.GetCoreVersion())
-	////初始化
-	//connection.InitConnectionService()
-	////crypt.InitTls(filepath.Join(common.GetRunPath(), "conf", "server.pem"), filepath.Join(common.GetRunPath(), "conf", "server.key"))
-	////初始化密钥
-	//crypt.InitTls()
-	////初始化允许的端口
-	//tool.InitAllowPort()
-	////持续获取系统信息
-	//tool.StartSystemInfo()
-	////
-	//timeout, err := beego.AppConfig.Int("disconnect_timeout")
-	//if err != nil {
+	// slog.Info("the config path is:" + common.GetRunPath())
+	// slog.Info("the version of server is %s ,allow client core version to be %s", version.VERSION, version.GetCoreVersion())
+	// //初始化
+	// connection.InitConnectionService()
+	// //crypt.InitTls(filepath.Join(common.GetRunPath(), "conf", "server.pem"), filepath.Join(common.GetRunPath(), "conf", "server.key"))
+	// //初始化密钥
+	// crypt.InitTls()
+	// //初始化允许的端口
+	// tool.InitAllowPort()
+	// //持续获取系统信息
+	// tool.StartSystemInfo()
+	// //
+	// timeout, err := beego.AppConfig.Int("disconnect_timeout")
+	// if err != nil {
 	//	timeout = 60
-	//}
-	//go server.StartNewServer(bridgePort, task, beego.AppConfig.String("bridge_type"), timeout)
+	// }
+	// go server.StartNewServer(bridgePort, task, beego.AppConfig.String("bridge_type"), timeout)
 }

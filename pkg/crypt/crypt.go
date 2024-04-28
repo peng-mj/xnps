@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/oklog/ulid/v2"
 	"math/rand"
+	"regexp"
 	"time"
 )
 
@@ -93,6 +94,11 @@ type RandString struct {
 	base []byte
 }
 
+func (r *RandString) AddAll() *RandString {
+	r.base = []byte("abcdefghijklmnopqrstuvwxyzQWERTYUIOPASDFGHJKLZXCVBNM-_=#$|?/.,;:+*@~")
+	return r
+}
+
 func (r *RandString) AddNum() *RandString {
 	r.base = append(r.base, []byte("0123456789")...)
 	return r
@@ -144,4 +150,42 @@ func Ulid() string {
 }
 func Uuid() string {
 	return uuid.New().String()
+}
+
+func CheckPassed(passwd string) int {
+	bt := []byte(passwd)
+	var num, letLow, letUp, other int
+	for i := range bt {
+		if bt[i] >= '0' && bt[i] <= '9' {
+			num++
+		} else if bt[i] >= 'a' && bt[i] <= 'z' {
+			letLow++
+		} else if bt[i] >= 'A' && bt[i] <= 'Z' {
+			letUp++
+		} else {
+			other++
+		}
+	}
+	res := 0
+	if num != 0 {
+		res++
+	}
+	if letLow != 0 {
+		res++
+	}
+	if letUp != 0 {
+		res++
+	}
+	if other != 0 {
+		res++
+	}
+	return res
+}
+
+func CheckEmail(email string) bool {
+	match, err := regexp.Match(`(\w+)@(\w{2,}).([.a-z]+)`, []byte(email))
+	if err != nil {
+		return false
+	}
+	return match
 }

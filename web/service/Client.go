@@ -3,9 +3,9 @@ package service
 import (
 	"errors"
 	"strconv"
-	"xnps/pkg/crypt"
-	"xnps/pkg/database"
-	"xnps/pkg/models"
+	"tunpx/pkg/crypt"
+	"tunpx/pkg/database"
+	"tunpx/pkg/models"
 )
 
 type Client struct {
@@ -86,7 +86,7 @@ func (c *Client) HasTunnel(clientId int64, t *models.Tunnel) bool {
 	var num int64
 	c.Orm(models.Client{}).Where("client_id = ?", clientId).Where(t).Count(&num)
 	return num > 0
-	//return c.GDb.Model(models.Tunnel{}).Where("client_id = ?", clientId).Where(t).First(new(models.Tunnel)).RowsAffected > 0
+	// return c.GDb.Model(models.Tunnel{}).Where("client_id = ?", clientId).Where(t).First(new(models.Tunnel)).RowsAffected > 0
 }
 func (c *Client) GetClientById(id int64) (client *models.Client, err error) {
 	if c.Orm(models.Client{}).Where("id = ? and valid = 1", id).First(client).RowsAffected < 1 {
@@ -101,13 +101,13 @@ func (c *Client) CheckClientValid(id int64) bool {
 	return c.Orm(models.Client{}).Where("id = ? and valid = 1", id).Limit(1).Count(&count).RowsAffected > 0
 }
 func (c *Client) UpdateClient(t *models.Client) error {
-	//c.JsonDb.Clients.Store(t.Id, t)
+	// c.JsonDb.Clients.Store(t.Id, t)
 
 	res := c.Orm(models.Client{}).Where("id = ?", t.Id).Updates(t).RowsAffected
-	//if t.RateLimit == 0 {
+	// if t.RateLimit == 0 {
 	//	t.Rate = rate.NewRate(int64(2 << 23))
 	//	t.Rate.Start()
-	//}
+	// }
 	if res < 1 {
 		return errors.New("have no client or the client have no change where id =  " + strconv.FormatInt(t.Id, 10))
 	}

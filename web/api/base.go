@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strconv"
 	"time"
-	"xnps/web/dto"
+	"tunpx/web/dto"
 )
 
 func Response(ctx *gin.Context, data interface{}) {

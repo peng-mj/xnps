@@ -5,8 +5,8 @@ import (
 	"golang.org/x/exp/slog"
 	"testing"
 	"time"
-	"xnps/pkg/crypt"
-	"xnps/pkg/sysTool"
+	"tunpx/pkg/crypt"
+	"tunpx/pkg/sysTool"
 )
 
 func Test(t *testing.T) {
@@ -28,9 +28,9 @@ func Test(t *testing.T) {
 
 }
 func Test2(t *testing.T) {
-	base := "E:/Magic/xnps/conf/server2.toml"
-	if sysTool.DirExisted("E:/Magic/xnps/conf") {
-		sysTool.CreateFolder("E:/Magic/xnps/conf")
+	base := "E:/Magic/tunpxs/conf/server2.toml"
+	if sysTool.DirExisted("E:/Magic/tunpxs/conf") {
+		sysTool.CreateFolder("E:/Magic/tunpxs/conf")
 	}
 	err := CreateNewInitFile(base)
 	if err != nil {

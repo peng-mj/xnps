@@ -8,6 +8,10 @@ const (
 	ErrPasswd    = 1002
 	ErrRateLimit = 1003
 
+	ErrCreateConfigFile = 1100
+	ErrCreateUser       = 1101
+	ErrCreateGroup      = 1102
+
 	NeedOtpCode = 2000
 )
 
@@ -19,7 +23,7 @@ func (m RspCode) String() string {
 		return res
 	}
 	switch m {
-	//连接参数
+	// 连接参数
 	case ErrParam:
 		return "the input parameter is incorrect"
 	case ErrNotFound:

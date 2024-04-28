@@ -3,7 +3,7 @@ package service
 import (
 	"errors"
 	"fmt"
-	"xnps/pkg/models"
+	"tunpx/pkg/models"
 )
 
 type Tunnel struct {
@@ -19,9 +19,9 @@ func NewTunnel(db *Base) *Tunnel {
 func (s *Tunnel) GetTunnelListByClientIdWithPage(start, recordsCount int, mode string, clientId int64) ([]models.Tunnel, int) {
 	var cli []models.Tunnel
 	db := s.Orm(models.Tunnel{}).Where("client_id = ? and valid = 1", clientId)
-	//if common.IsTunnelMode(mode) {
+	// if common.IsTunnelMode(mode) {
 	//	db = db.Where("mode = ?", mode)
-	//}
+	// }
 	db.Offset(start).Limit(recordsCount).Find(&cli)
 	return cli, len(cli)
 }
@@ -81,9 +81,9 @@ func (s *Tunnel) GetTaskById(id int64) (tunnel *models.Tunnel, e error) {
 // 离线false,上线true
 func (s *Tunnel) GetAllTunnelCountByStatus(status bool, mode string) (count int64) {
 	db := s.Orm(models.Tunnel{}).Where("connected = ? ", status)
-	//if common.IsTunnelMode(mode) {
+	// if common.IsTunnelMode(mode) {
 	//	db = db.Where("mode = ?", mode)
-	//}
+	// }
 	db.Count(&count)
 	return
 }

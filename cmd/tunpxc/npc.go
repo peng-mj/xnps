@@ -11,13 +11,13 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"xnps/pkg/common"
-	"xnps/pkg/config"
-	_ "xnps/pkg/crypt"
-	"xnps/pkg/install"
-	"xnps/pkg/models"
-	"xnps/pkg/sysTool"
-	"xnps/pkg/version"
+	"tunpx/pkg/common"
+	"tunpx/pkg/config"
+	_ "tunpx/pkg/crypt"
+	"tunpx/pkg/install"
+	"tunpx/pkg/models"
+	"tunpx/pkg/sysTool"
+	"tunpx/pkg/version"
 )
 
 // 获取输入参数
@@ -31,7 +31,7 @@ var (
 	password       = flag.String("password", "", "p2p password flag")
 	target         = flag.String("target", "", "p2p target")
 	localType      = flag.String("local_type", "p2p", "p2p target")
-	logPath        = flag.String("log_path", "", "npc log path")
+	logPath        = flag.String("log_path", "", "tunpxc log path")
 	pprofAddr      = flag.String("pprof", "", "PProf debug addr (ip:port)")
 	ver            = flag.Bool("version", false, "show current version")
 	disconnectTime = flag.Int("disconnect_timeout", 60, "not receiving check packet times, until timeout will disconnect the client")
@@ -39,7 +39,7 @@ var (
 
 func main() {
 	if *logPath == "" {
-		*logPath = "./log/xnps.log"
+		*logPath = "./log/tunpxs.log"
 		if !sysTool.DirExisted("./log") {
 			sysTool.CreateFolder("./log")
 		}
@@ -92,7 +92,7 @@ func main() {
 		exit: make(chan struct{}),
 	}
 	s, err := service.New(prg, svcConfig)
-	if err != nil { //输入参数为空时
+	if err != nil { // 输入参数为空时
 		slog.Error("xnpc.go", err, "service function disabled")
 		run()
 		// run without service
@@ -120,13 +120,13 @@ func main() {
 				slog.Info("unix-systemv service")
 
 				if err = exec.Command("/etc/init.d/"+svcConfig.Name, os.Args[1]).Run(); err != nil {
-					slog.Error("npc.go", "service"+os.Args[1]+" err", err)
+					slog.Error("tunpxc.go", "service"+os.Args[1]+" err", err)
 				}
 				return
 			}
 			err = service.Control(s, os.Args[1])
 			if err != nil {
-				slog.Error("npc.go", "Valid actions err", os.Args[1], service.ControlAction, err)
+				slog.Error("tunpxc.go", "Valid actions err", os.Args[1], service.ControlAction, err)
 			}
 			return
 		case "install":
@@ -135,7 +135,7 @@ func main() {
 			install.InstallNpc()
 
 			if err = service.Control(s, os.Args[1]); err != nil {
-				slog.Error("npc.go", "service"+os.Args[1]+" err", err)
+				slog.Error("tunpxc.go", "service"+os.Args[1]+" err", err)
 			}
 			if service.Platform() == "unix-systemv" {
 				slog.Info("unix-systemv service")
@@ -146,7 +146,7 @@ func main() {
 			return
 		case "uninstall":
 			if err = service.Control(s, os.Args[1]); err != nil {
-				slog.Error("npc.go", "service"+os.Args[1]+" err", err)
+				slog.Error("tunpxc.go", "service"+os.Args[1]+" err", err)
 			}
 			if service.Platform() == "unix-systemv" {
 				slog.Info("unix-systemv service")
@@ -157,7 +157,7 @@ func main() {
 		}
 	}
 	if err = s.Run(); err != nil {
-		slog.Error("run npc false", "err", err)
+		slog.Error("run tunpxc false", "err", err)
 	}
 
 }
@@ -184,7 +184,7 @@ func (p *npc) run() error {
 			const size = 64 << 10
 			buf := make([]byte, size)
 			buf = buf[:runtime.Stack(buf, false)]
-			slog.Warn("npc: panic serving ", err, string(buf))
+			slog.Warn("tunpxc: panic serving ", err, string(buf))
 		}
 	}()
 	run()
@@ -196,9 +196,9 @@ func (p *npc) run() error {
 }
 
 func run() {
-	//性能分析工具
+	// 性能分析工具
 	common.InitPProfFromArg(*pprofAddr)
-	//p2p or secret command
+	// p2p or secret command
 	if *password != "" {
 		commonConfig := new(config.CommonConfig)
 		commonConfig.Server = *serverAddr
@@ -210,7 +210,7 @@ func run() {
 		localServer.Target = *target
 		localServer.Port = *localPort
 		commonConfig.Client = new(models.Client)
-		//commonConfig.Client.Cnf = new(models.Config)
+		// commonConfig.Client.Cnf = new(models.Config)
 		go client2.StartLocalServer(localServer, commonConfig)
 		return
 	}
@@ -223,7 +223,7 @@ func run() {
 	}
 	slog.Info("version info", "client version", version.VERSION, "core version", version.GetCoreVersion())
 	if *verifyKey != "" && *serverAddr != "" && *configPath == "" {
-		//main
+		// main
 		go func() {
 			for {
 				client.NewRPClient(*serverAddr, *verifyKey, *connType, *proxyUrl, nil, *disconnectTime).Start()

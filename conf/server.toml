@@ -1,15 +1,6 @@
-[web]
-WebPort = 8091
-Username = "admin"
-Password = "123456"
-OTPKeys = "" #Automatically generated at installation
-
-[databses]
-Type = "sqlite3"
-Path = "./.data/server.sqlite3"
-
-[proxy]
-BrigePort = 8090
-MaxClient = 100
-UsablePort = [[9000,9900],21000]
-
+Remark = ""
+InitTime = 1714061289
+BasePath = "./"
+AppKeys = ["oQON7rqQkhSE9OZH8XxAoTFa", "bHUXIefBRiFjG58GqMeGx9qc", "NISPq26kVvT9ewPijnlfz7aB", "vYbWjtcj6ykYi1BxCdhy77CE", "7jWRUOiMNC3dQG6a8uK42LhY", "OFkCwZcL220OckA3p52Q7ytS", "0J2M3MgsXBePbeAWPaiNmWxN", "XO1LvFb86wJA2UNGq9u76GDm", "peglkjt4uq9slf41K3jS9V37", "WO8NJYCljXaPqv4S7pa38EdL"]
+WebPort = 8090
+UsagePorts = [[800, 8100], [9000], [9090]]
