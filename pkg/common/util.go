@@ -17,9 +17,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"tunpx/lib/version"
-
-	"tunpx/lib/crypt"
+	"tunpx/pkg/crypt"
+	"tunpx/pkg/version"
 )
 
 // Get the corresponding IP address through domain name
