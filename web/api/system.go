@@ -2,12 +2,12 @@ package api
 
 import (
 	"github.com/gin-gonic/gin"
+	"golang.org/x/exp/slog"
 	"math/rand"
 	"net/http"
-	"time"
-	"tunpx/pkg/config"
 	"tunpx/pkg/crypt"
 	"tunpx/pkg/models"
+	myUitls "tunpx/pkg/myUtils"
 	"tunpx/web/dto"
 	"tunpx/web/service"
 )
@@ -45,16 +45,19 @@ func (s *System) Init(ctx *gin.Context) {
 		ctx.Abort()
 		return
 	}
-	var fConf config.Config
-	fConf.BasePath = conf.BasePath
-	fConf.WebPort = conf.WebPort
-	fConf.InitTime = time.Now().Unix()
-	fConf.BridgePort = conf.BridgePort
-	fConf.Remark = conf.OrgName
-	fConf.DbType = "sqlite"
-	fConf.AppKeys = crypt.RandStr().AddAll().GenerateList(16, 20)
-	fConf.UsagePorts = conf.UsagePorts
-	err = config.New(fConf.BasePath + "/conf.toml").Update(fConf)
+	slog.Info("config request", "config", conf)
+	ports := myUitls.NewPorts(conf.UsagePorts)
+	sysCOnf := models.Config{
+		UsagePorts: ports.String(),
+		OrgName:    conf.OrgName,
+		// AppKey:     crypt.RandStr().Generate(128),
+		BridgePort: conf.BridgePort,
+		WebPort:    conf.WebPort,
+	}
+
+	err = service.NewSystem(s.kit).CreateInit(&sysCOnf)
+	slog.Info("system config", "sysCOnf", sysCOnf)
+
 	if err != nil {
 		RepErrorWithMsg(ctx, dto.ErrCreateConfigFile, err.Error())
 		ctx.Abort()
@@ -72,31 +75,37 @@ func (s *System) Init(ctx *gin.Context) {
 		MaxConn:      conf.MaxConn,
 		Valid:        true,
 	}
+
 	err = service.NewAuthUser(s.kit).Create(&auth)
+
 	if err != nil {
+		slog.Error("auth config", "auth", auth)
+
 		RepErrorWithMsg(ctx, dto.ErrCreateUser, err.Error())
 		ctx.Abort()
 		return
 	}
+	slog.Info("auth config", "auth", auth)
+
 	group := models.Group{
 		Valid:        true,
 		Uid:          auth.Uid,
 		Name:         "default",
-		UsagePorts:   config.NewPorts(conf.UsagePorts).String(),
+		UsagePorts:   ports.String(),
 		GroupType:    "default",
 		MaxClientNum: int32(conf.MaxConn),
 		Remark:       "default group",
 	}
 	err = service.NewGroup(s.kit).Create(&group)
 	if err != nil {
+		slog.Error("group config", "msg", err)
 		RepErrorWithMsg(ctx, dto.ErrCreateGroup, err.Error())
 		ctx.Abort()
 		return
 	}
-
+	slog.Info("group config", "group", group)
 	ctx.JSON(http.StatusOK, "OK")
 	ctx.Next()
-
 }
 
 // StaticInit  to load system init html and other static files

@@ -13,3 +13,6 @@ func (b *Base) Service(db *database.Driver) *Base {
 	b.Driver = db
 	return b
 }
+func NewBase(db *database.Driver) *Base {
+	return &Base{Driver: db}
+}

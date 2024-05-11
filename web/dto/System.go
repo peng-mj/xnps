@@ -2,15 +2,12 @@ package dto
 
 import (
 	"errors"
-	"strings"
-	"tunpx/pkg/config"
 	"tunpx/pkg/crypt"
-	"tunpx/pkg/sysTool"
+	myUitls "tunpx/pkg/myUtils"
 )
 
 type ConfigReq struct {
 	OrgName      string  `json:"org_name,omitempty"`
-	BasePath     string  `json:"base_path"`
 	WebPort      int     `json:"web_port"`
 	BridgePort   int     `json:"bridge_port"`
 	UsagePorts   [][]int `json:"usage_ports"`
@@ -38,7 +35,7 @@ func (c *ConfigReq) Validity() error {
 	if crypt.CheckPassed(c.Password) < 3 {
 		return errors.New("password to week, include at least three types of numbers, uppercase letters, lowercase letters, and special symbols")
 	}
-	usagePort := config.NewPorts(c.UsagePorts).Format()
+	usagePort := myUitls.NewPorts(c.UsagePorts).Format()
 	if len(usagePort.Ports()) == 0 {
 		return errors.New("usage proxy port should not be null, check it now")
 	}
@@ -47,12 +44,7 @@ func (c *ConfigReq) Validity() error {
 	if c.MaxConn < 3 {
 		c.MaxConn = 3
 	}
-	if c.BasePath == "" {
-		c.BasePath = "./data"
-	}
 
-	c.BasePath = strings.TrimRight(c.BasePath, "/")
-	sysTool.CreateFolder(c.BasePath)
 	return nil
 
 }

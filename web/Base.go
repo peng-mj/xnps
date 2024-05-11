@@ -12,8 +12,8 @@ import (
 )
 
 type Server struct {
-	engin *gin.Engine
-
+	engin     *gin.Engine
+	ExCode    int
 	host      string
 	kit       *service.Base
 	CloseFlag chan struct{}
@@ -28,14 +28,11 @@ func New() *Server {
 }
 func (w *Server) Close() {
 	w.CloseFlag <- struct{}{}
+
 }
 
-func (w *Server) InitSys(host string) (err error) {
-	db, err := database.New().Sqlite("temp.sqlite").Init()
-
-	if err != nil {
-		slog.Error("failed to create a temporary database file, check whether you have permissions for bin")
-	}
+func (w *Server) InitSys(host string, db *database.Driver) (err error) {
+	// w.engin = gin.Default()
 	w.engin.Use(gin.Logger(), gin.Recovery())
 	w.kit = w.kit.Service(db)
 	system := api.NewSystem(w.kit)
@@ -43,10 +40,18 @@ func (w *Server) InitSys(host string) (err error) {
 		GET("/static/system/success", system.StaticSuccess).
 		POST("/api/system", system.Init, func(ctx *gin.Context) {
 			if !ctx.IsAborted() {
-				w.Close()
+				go func() {
+					time.Sleep(time.Millisecond * 500)
+					w.Close()
+				}()
+				w.ExCode = 0
 			}
 		})
+	w.host = host
+	return w.listen(host)
+}
 
+func (w *Server) listen(host string) (err error) {
 	sev := http.Server{Addr: host, Handler: w.engin}
 	go func() {
 		if err = sev.ListenAndServe(); err != nil {
@@ -65,9 +70,6 @@ func (w *Server) InitSys(host string) (err error) {
 		}
 		return err
 	}
-}
-
-func (w *Server) Listen() {
 
 }
 
@@ -86,9 +88,8 @@ func (w *Server) Start(host string, db *database.Driver) {
 	// group
 	groupApi := api.NewGroup(w.kit)
 	group := xnps.Group("/group").Use(middle.AuthMiddle, middle.GetUser)
-	group.GET("/all", groupApi.GetAll).
+	group.GET("", groupApi.GetAll).
 		POST("", groupApi.Create).
-		POST("/filter", groupApi.GetByFilter).
 		PUT("/:id", groupApi.Update).
 		DELETE("/:id", groupApi.Delete)
 
@@ -128,5 +129,4 @@ func (w *Server) Start(host string, db *database.Driver) {
 	case <-w.CloseFlag:
 		return
 	}
-
 }

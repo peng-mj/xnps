@@ -37,7 +37,7 @@ func (c *Driver) Mysql(url string) *Driver {
 	c.dbType = MYSQL
 	return c
 }
-func (c *Driver) AddModels(dst ...interface{}) *Driver {
+func (c *Driver) AddModels(dst []interface{}) *Driver {
 	c.tableModel = dst
 	return c
 }
@@ -56,8 +56,7 @@ func (c *Driver) Init() (driver *Driver, err error) {
 	}
 	c.orm, err = gorm.Open(c.db, &gorm.Config{})
 	if err == nil {
-
-		err = c.orm.AutoMigrate(c.tableModel)
+		err = c.orm.AutoMigrate(c.tableModel...)
 		if err != nil {
 			err = errors.New("failed to create or update the table structure")
 		}

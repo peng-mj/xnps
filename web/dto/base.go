@@ -1,5 +1,7 @@
 package dto
 
+import "errors"
+
 type Response struct {
 	Code  int         `json:"code"`
 	ErMsg string      `json:"msg,omitempty"`
@@ -8,7 +10,7 @@ type Response struct {
 
 type User struct {
 	Id        int32
-	Uid       string
+	Uid       int64
 	AuthLevel int32
 	ExpireAt  int64
 	OtpKey    string
@@ -16,11 +18,13 @@ type User struct {
 }
 
 type Page struct {
-	Page int32
+	Num  int32
 	Size int32
 }
 
-func (p *Page) Check() (err error) {
-
+func (p *Page) IsValid() (err error) {
+	if p.Num < 0 || p.Size < 0 {
+		return errors.New("page number or page size error, size or num should >= 0")
+	}
 	return
 }

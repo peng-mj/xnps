@@ -3,10 +3,12 @@ package dto
 import "net/http"
 
 const (
-	ErrParam     = 1000
-	ErrNotFound  = 1001
-	ErrPasswd    = 1002
-	ErrRateLimit = 1003
+	ErrParam       = 1000
+	ErrNotFound    = 1001
+	ErrPasswd      = 1002
+	ErrRateLimit   = 1003
+	ErrDbError     = 1004
+	ErrInternalErr = 1005
 
 	ErrCreateConfigFile = 1100
 	ErrCreateUser       = 1101
@@ -32,6 +34,10 @@ func (m RspCode) String() string {
 		return "password or username error"
 	case ErrRateLimit:
 		return "rate limit"
+	case ErrDbError:
+		return "database error"
+	case ErrInternalErr:
+		return "internal error"
 
 	case NeedOtpCode:
 		return "need otp code"
