@@ -1,6 +1,7 @@
 package models
 
 import (
+	"gorm.io/gorm"
 	"time"
 )
 
@@ -16,7 +17,7 @@ type Client struct {
 	Valid              bool      `gorm:"column:valid;not null;default:true" json:"valid"`                              // 是否启用
 	Connected          bool      `gorm:"column:connected;not null;default:true" json:"connected"`                      // 是否已经连接
 	Crypt              bool      `gorm:"column:crypt;not null;default:false" json:"crypt"`                             // 是否加密
-	Compress           bool      `gorm:"column:compress;not null;default:false:" json:"compress"`                      // 是否压缩
+	Compress           bool      `gorm:"column:compress;not null;default:false" json:"compress"`                       // 是否压缩
 	RateLimit          uint32    `gorm:"column:rate_limit;type:integer;default:0;not null" json:"rate_limit"`          // 网速限制
 	FlowExport         float64   `gorm:"column:flow_export;type:real;not null;default:0" json:"flow_export"`           // 流出流量的 KB
 	FlowInput          float64   `gorm:"column:flow_in;type:real;not null;default:0" json:"flow_input"`                // 流如的流量 KB
@@ -32,4 +33,15 @@ type Client struct {
 
 func (*Client) TableName() string {
 	return "client"
+}
+
+func (m *Client) BeforeCreate(tx *gorm.DB) (err error) {
+	m.CreateAt = time.Now()
+	m.ActiveAt = time.Now()
+	return
+}
+
+func (m *Client) BeforeUpdate(tx *gorm.DB) (err error) {
+	m.ActiveAt = time.Now()
+	return
 }

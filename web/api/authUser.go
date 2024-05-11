@@ -20,7 +20,7 @@ func (a *AuthUser) GetAllUser(ctx *gin.Context) {
 		RepError(ctx, http.StatusForbidden)
 		return
 	}
-	user := service.NewAuthUser(a.kit).GetAllUser()
+	user := service.NewAuthUser(a.kit).GetAllUser(auth.AuthLevel)
 	Response(ctx, user)
 }
 func (a *AuthUser) GetUserByUid(ctx *gin.Context) {
