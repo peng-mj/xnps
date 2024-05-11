@@ -3,6 +3,7 @@ package sysTool
 import (
 	"encoding/base64"
 	"os"
+	"runtime"
 )
 
 func DirExisted(path string) bool {
@@ -42,6 +43,21 @@ func CreateFolder(dir string) {
 		_ = os.MkdirAll(dir, os.ModePerm)
 	}
 	return
+}
+
+func GetBasePath() string {
+	base, err := os.Getwd()
+	if err != nil || base == "" {
+		base = "."
+	}
+	if runtime.GOOS == "windows" {
+		base = base + "\\.tunpx"
+	} else {
+		base = base + "/.tunpx"
+	}
+	CreateFolder(base)
+	return base
+
 }
 
 func SaveBase64File(filePath, base64Data string) (length int, err error) {

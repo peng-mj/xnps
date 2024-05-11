@@ -3,7 +3,6 @@ package api
 import (
 	"github.com/gin-gonic/gin"
 	"net/http"
-	"strconv"
 	"time"
 	"tunpx/web/dto"
 )
@@ -19,7 +18,10 @@ func RepErrorWithMsg(ctx *gin.Context, code int, msg string) {
 }
 
 func Ping(ctx *gin.Context) {
-	ctx.String(http.StatusOK, strconv.FormatInt(time.Now().Unix(), 10))
+	ctx.JSON(http.StatusOK, struct {
+		Date      string `json:"date"`
+		Timestamp int64  `json:"timestamp"`
+	}{Date: time.Now().String(), Timestamp: time.Now().Unix()})
 }
 
 func GetUser(ctx *gin.Context) *dto.User {

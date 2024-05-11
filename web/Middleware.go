@@ -51,8 +51,10 @@ func (m *MiddleBase) AuthMiddle(ctx *gin.Context) {
 
 func (m *MiddleBase) GetUser(ctx *gin.Context) {
 	if uid, ok := ctx.Get("uid"); ok {
-		if user, err := service.NewAuthUser(m.kid).GetUserByUid(uid.(string)); err != nil {
-			ctx.JSON(http.StatusForbidden, dto.Response{Code: http.StatusForbidden, ErMsg: err.Error()})
+		if user, err := service.NewAuthUser(m.kid).GetUserByUid(uid.(int64)); err != nil {
+			api.RepError(ctx, http.StatusForbidden)
+			ctx.Abort()
+			return
 		} else {
 			ctx.Set("user", dto.User{
 				Uid:       user.Uid,
@@ -62,6 +64,7 @@ func (m *MiddleBase) GetUser(ctx *gin.Context) {
 				OtpKey:    user.OTAKeys,
 				Valid:     user.ExpirationAt >= time.Now().Unix(),
 			})
+			ctx.Next()
 		}
 	}
 }
@@ -70,13 +73,12 @@ func (m *MiddleBase) GetUser(ctx *gin.Context) {
 func (m *MiddleBase) Login(ctx *gin.Context) {
 	var login dto.LoginReq
 	var err error
-
 	if err = ctx.ShouldBindJSON(&login); err == nil {
 		user, code := service.NewAuthUser(m.kid).CheckPasswd(&login)
 		if code != 200 {
 			api.RepError(ctx, code.Int())
 		}
-		token := m.token.Generate(user.Uid, time.Hour*2)
+		token := m.token.Generate(user.Uid, time.Hour*12)
 		api.Response(ctx, token)
 		ctx.Abort()
 		return

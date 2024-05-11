@@ -33,7 +33,7 @@ func NewToken() *Token {
 	return &token
 }
 
-func (t *Token) Generate(uid string, expireTime time.Duration) string {
+func (t *Token) Generate(uid int64, expireTime time.Duration) string {
 	token := jwt.New(jwt.SigningMethodHS256)
 	claims := token.Claims.(jwt.MapClaims)
 	sid := rand.Intn(MaxRandKeys)
