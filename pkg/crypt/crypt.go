@@ -14,6 +14,7 @@ import (
 	"github.com/oklog/ulid/v2"
 	"math/rand"
 	"regexp"
+	"sort"
 	"time"
 )
 
@@ -101,6 +102,7 @@ func (r *RandString) AddAll() *RandString {
 
 func (r *RandString) AddNum() *RandString {
 	r.base = append(r.base, []byte("0123456789")...)
+
 	return r
 }
 func (r *RandString) AddLetter() *RandString {
@@ -119,9 +121,11 @@ func (r *RandString) Generate(l int) string {
 	if len(r.base) == 0 {
 		r.AddNum().AddLetter()
 	}
-	var res []byte
-	for l > 0 {
-		res = append(res, r.base[rand.Intn(len(r.base))])
+	n := len(r.base)
+	res := make([]byte, l)
+	l--
+	for l >= 0 {
+		res[l] = r.base[rand.Intn(n)]
 		l--
 	}
 	return string(res)
@@ -188,4 +192,29 @@ func CheckEmail(email string) bool {
 		return false
 	}
 	return match
+}
+
+func MergeRanges(intervals [][]int) [][]int {
+	if len(intervals) == 0 {
+		return [][]int{}
+	}
+
+	sort.Slice(intervals, func(i, j int) bool {
+		return intervals[i][0] < intervals[j][0]
+	})
+
+	var merged [][]int
+	cur := intervals[0]
+	for i := 0; i < len(intervals); i++ {
+		if cur[1]+1 >= intervals[i][0] {
+			cur[1] = intervals[i][1]
+		} else {
+			merged = append(merged, cur)
+			cur = intervals[i]
+		}
+	}
+	// 将最后一个范围加入结果集合
+	merged = append(merged, cur)
+
+	return merged
 }

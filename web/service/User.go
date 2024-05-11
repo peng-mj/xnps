@@ -25,9 +25,7 @@ func (s *AuthUser) CheckPasswd(auth *dto.LoginReq) (user *models.AuthUser, code 
 	var otpCOde, passwd string
 	if user.OTAEnable {
 		if len(auth.OtpCode) != 6 {
-			// return errors.New("need otp code")
 			return nil, dto.RspCode(dto.NeedOtpCode)
-
 		}
 		// TODO: design a otp login
 		//	get otp code
@@ -41,7 +39,7 @@ func (s *AuthUser) CheckPasswd(auth *dto.LoginReq) (user *models.AuthUser, code 
 	}
 	return user, dto.RspCode(200)
 }
-func (s *AuthUser) GetUserByUid(uid string) (user models.AuthUser, err error) {
+func (s *AuthUser) GetUserByUid(uid int64) (user models.AuthUser, err error) {
 	if s.Orm(models.AuthUser{}).Where("uid = ?", uid).First(&user).RowsAffected == 0 {
 		err = errors.New("user not found")
 	}
@@ -49,9 +47,9 @@ func (s *AuthUser) GetUserByUid(uid string) (user models.AuthUser, err error) {
 }
 
 // GetAllUser just admin
-func (s *AuthUser) GetAllUser() (user []models.AuthUser) {
+func (s *AuthUser) GetAllUser(level int32) (user []models.AuthUser) {
 	user = make([]models.AuthUser, 0)
-	s.Orm(models.AuthUser{}).Find(&user)
+	s.Orm(models.AuthUser{}).Where("level >= ?", level).Find(&user)
 	return
 }
 func (s *AuthUser) Create(user *models.AuthUser) error {
